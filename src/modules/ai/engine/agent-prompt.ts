@@ -2,12 +2,14 @@
 //
 // THE FROZEN PART comes first and never changes between turns or people, so it and the tool list
 // are cached (FR-AGT-44): the rules, the scope, how to cite. What changes — today's date, the
-// asker's name and language — comes after the cache breakpoint, in a second system block.
+// asker's name and language, the page they asked from — comes after the cache breakpoint, in a second system block.
 //
 // The model is told the rules so it behaves; it is not what enforces them. A tool the asker may
 // not use is never offered; a tool reads as the asker; the out-of-scope sentence is the app's, not
 // the model's; and nothing the model says can change a record — a `propose_*` tool only puts a card
 // in front of the asker, and the asker's click runs the module's own action (D37).
+
+import type { PageContext } from "../enums";
 
 /** Why a question was declined (FR-AGT-03). The sentence the person reads is the app's, per locale. */
 export const OFF_TOPIC_KINDS = ["greeting", "general_knowledge", "news", "coding", "homework", "translation", "creative", "other_company", "opinion_on_person", "other"] as const;
@@ -71,11 +73,19 @@ How you answer:
 - Name the period a figure covers ("tháng 10/2026", "this week").
 - Amounts of money exactly as the tool gives them, in VND. Dates as the asker would write them.`;
 
-export type TurnContext = { today: string; locale: "vi" | "en"; askerName: string };
+export type TurnContext = { today: string; locale: "vi" | "en"; askerName: string; page?: PageContext | null };
 
-/** The part of the system prompt that changes per turn — after the cache breakpoint. */
-export function turnContext({ today, locale, askerName }: TurnContext): string {
-  return `Today is ${today} (Vietnam time). The asker is ${askerName}. The app is shown to them in ${locale === "en" ? "English" : "Vietnamese"}.`;
+const PAGE_NOUNS: Record<PageContext["kind"], string> = { task: "task (việc này)", project: "project (dự án này)", person: "person's profile (người này)" };
+
+/**
+ * The part of the system prompt that changes per turn — after the cache breakpoint. The page the
+ * asker is on is an id, never a name read for the model: the tool given it decides whether the
+ * asker may see it, as it does for any id (FR-AGT-02).
+ */
+export function turnContext({ today, locale, askerName, page }: TurnContext): string {
+  const base = `Today is ${today} (Vietnam time). The asker is ${askerName}. The app is shown to them in ${locale === "en" ? "English" : "Vietnamese"}.`;
+  if (!page) return base;
+  return `${base} They asked from a ${PAGE_NOUNS[page.kind]} page, id ${page.id}: when they say "this", "này" or name no ${page.kind}, they mean that one — pass the id to a tool that takes one. Questions about anything else are answered as usual.`;
 }
 
 /** A tool result as the model reads it: one JSON object, the tool's name and outcome first. */

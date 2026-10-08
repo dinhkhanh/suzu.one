@@ -72,7 +72,7 @@ type Props = {
   /** `photoUrl`: the profile picture, when the person has put one up. `footer` sits at the end of their row. */
   user: { name: string; email: string; photoUrl: string | null };
   footer: ReactNode;
-  /** At the right end of the header on every page: the feedback button. */
+  /** At the right end of the header on every page: the assistant's sheet and the feedback button. */
   headerEnd?: ReactNode;
   /** Across the top of the page, above the header: the "seeing the app as…" banner. */
   notice?: ReactNode;

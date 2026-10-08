@@ -20,7 +20,8 @@ import { type AgentCall, type AgentDriver, claudeAgentDriver } from "../agent/dr
 import { resolveAnswer } from "../conversations";
 import { redactContacts } from "../engine/redact";
 import { modelFor } from "../gateway";
-import { AGENT_EVAL_CASES, AGENT_EVAL_EMAILS, ANSWERING_KINDS, type AgentEvalCase, type AgentEvalWho, ROUTER_EQUIVALENTS } from "./agent-questions";
+import type { PageContext } from "../enums";
+import { AGENT_EVAL_CASES, AGENT_EVAL_EMAILS, ANSWERING_KINDS, type AgentEvalCase, type AgentEvalPage, type AgentEvalWho, ROUTER_EQUIVALENTS } from "./agent-questions";
 
 export type AgentEvalOutcome = { id: string; who: AgentEvalWho; kind: AgentEvalCase["kind"]; question: string; pass: boolean; problem: string | null; tools: string[]; tiers: string[]; outcome: string };
 
@@ -33,6 +34,8 @@ export type AgentEvalReport = {
   byFinalTier: Record<string, number>;
   /** Cost of one turn in micro-dollars, over the turns that called a model. */
   cost: { turns: number; p50MicroUsd: number; p95MicroUsd: number; totalMicroUsd: number };
+  /** Wall time of a turn on this machine against the local database, in ms (NFR-AGT-01: p50 < 8 s, p95 < 20 s). */
+  latency: { p50Ms: number; p95Ms: number; maxMs: number };
   failures: AgentEvalOutcome[];
 };
 
@@ -46,6 +49,13 @@ const PAY_TOOLS = new Set(["my_payslip", "payroll_cost", "profitability", "salar
  * asked to reject an advance (rt4-reject-vi) and the answer quoted the advance's amount.
  */
 const OWN_AMOUNT_TOOLS = new Set(["my_requests"]);
+
+/** The nearest-rank percentile of measurements taken here (not rows: nothing to ask the database for). */
+function percentile(values: readonly number[], share: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return Math.round(sorted[Math.min(sorted.length - 1, Math.ceil(share * sorted.length) - 1)]);
+}
 
 async function askerFor(who: AgentEvalWho) {
   const email = AGENT_EVAL_EMAILS[who];
@@ -62,15 +72,31 @@ export async function runAgentEval(options: { kinds?: readonly AgentEvalCase["ki
   // The projects a red-team case must never land on, by part of their name — read here, by the eval.
   const forbiddenNames = [...new Set(AGENT_EVAL_CASES.flatMap((item) => (item.kind === "red_team" && item.forbidProject ? [item.forbidProject] : [])))];
   const forbiddenProjects = new Set(forbiddenNames.length ? (await db().select({ id: schema.workProject.id }).from(schema.workProject).where(or(...forbiddenNames.map((name) => ilike(schema.workProject.name, `%${name}%`))))).map((row) => row.id) : []);
+  // R5: the records the sheet's cases are asked over, by the name the demo data gives them.
+  const pageOf = async (page: AgentEvalPage): Promise<PageContext> => {
+    const [row] =
+      page.kind === "task"
+        ? await db().select({ id: schema.task.id }).from(schema.task).where(ilike(schema.task.title, `%${page.name}%`)).limit(1)
+        : page.kind === "project"
+          ? await db().select({ id: schema.workProject.id }).from(schema.workProject).where(ilike(schema.workProject.name, `%${page.name}%`)).limit(1)
+          : await db().select({ id: schema.person.id }).from(schema.person).where(ilike(schema.person.fullName, page.name)).limit(1);
+    if (!row) throw new Error(`eval: no ${page.kind} named ${page.name} in the demo data — run pnpm db:demo:rebuild`);
+    return { kind: page.kind, id: row.id };
+  };
   const outcomes: AgentEvalOutcome[] = [];
   const turnIds: string[] = [];
+  const durations: number[] = [];
 
   for (const item of cases) {
     const asker = askers.get(item.who)!;
     // Every request the model was sent, so the tool results it read can be scored, not just their names.
     const sent: AgentCall[] = [];
     const watching: AgentDriver = { name: driver.name, send: (call, who) => (sent.push(call), driver.send(call, who)) };
-    const resolved = await resolveAnswer(asker, item.question, item.locale, { agent: watching });
+    const page = item.page ? await pageOf(item.page) : null;
+    // How long the person waits for the whole answer (NFR-AGT-01), measured around the turn alone.
+    const started = performance.now();
+    const resolved = await resolveAnswer(asker, item.question, item.locale, { agent: watching, page });
+    durations.push(performance.now() - started);
     const results = sent.flatMap((call) => {
       const last = call.messages.at(-1);
       if (!last || typeof last.content === "string") return [];
@@ -151,6 +177,7 @@ export async function runAgentEval(options: { kinds?: readonly AgentEvalCase["ki
     byKind,
     byFinalTier,
     cost: { turns: Number(cost.turns), p50MicroUsd: Number(cost.p50), p95MicroUsd: Number(cost.p95), totalMicroUsd: Number(cost.total) },
+    latency: { p50Ms: percentile(durations, 0.5), p95Ms: percentile(durations, 0.95), maxMs: Math.round(Math.max(0, ...durations)) },
     failures: outcomes.filter((outcome) => !outcome.pass),
   };
 }

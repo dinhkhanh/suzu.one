@@ -10,7 +10,7 @@
 //  - every call to a model, with its tokens and its price (`ai_model_call`, `engine/budget.ts`).
 // Citations are stored as JSON on the message rather than in a join table: they are a record of
 // what was shown at the time, not a live index. Every link is re-checked by the KB page itself.
-import { index, integer, jsonb, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { person } from "../platform/people/schema";
 
 export const aiMessageRole = pgEnum("ai_message_role", ["user", "assistant"]);
@@ -200,4 +200,34 @@ export const aiProposal = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("ai_proposal_person_idx").on(t.personId, t.createdAt), index("ai_proposal_turn_idx").on(t.turnId), index("ai_proposal_conversation_idx").on(t.conversationId)],
+).enableRLS();
+
+// ── Feedback on an answer (Phase 13 R5, FR-AGT-51) ──────────────────────────────────────────
+
+export const aiFeedbackVerdict = pgEnum("ai_feedback_verdict", ["right", "wrong"]);
+
+/**
+ * One person's đúng / sai on one answer of their own, with a note. The owner and the handbook's
+ * keepers read the verdict and the note; the question and the answer only when the asker ticked
+ * "chia sẻ câu trả lời này" (`shared`) — a question can be personal, and a keeper reads what the
+ * asker chose to hand over, never more. One per answer: giving it again changes it. It goes with the
+ * conversation: deleting that (or its retention running out) deletes the feedback too.
+ */
+export const aiFeedback = pgTable(
+  "ai_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => aiMessage.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id, { onDelete: "cascade" }),
+    verdict: aiFeedbackVerdict("verdict").notNull(),
+    note: text("note"),
+    shared: boolean("shared").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("ai_feedback_message_key").on(t.messageId), index("ai_feedback_created_idx").on(t.createdAt)],
 ).enableRLS();

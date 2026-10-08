@@ -114,8 +114,10 @@ export async function buildMyDataExport(viewer: { personId: string; principal: P
     payslipResultsOf(personId),
     db().select().from(schema.aiConversation).where(eq(schema.aiConversation.personId, personId)).orderBy(asc(schema.aiConversation.createdAt)),
     db()
-      .select({ conversationId: schema.aiMessage.conversationId, role: schema.aiMessage.role, body: schema.aiMessage.body, toolResult: schema.aiMessage.toolResult, createdAt: schema.aiMessage.createdAt })
+      // With the feedback they gave on an answer (FR-AGT-51): theirs too.
+      .select({ conversationId: schema.aiMessage.conversationId, role: schema.aiMessage.role, body: schema.aiMessage.body, toolResult: schema.aiMessage.toolResult, createdAt: schema.aiMessage.createdAt, feedback: { verdict: schema.aiFeedback.verdict, note: schema.aiFeedback.note, shared: schema.aiFeedback.shared } })
       .from(schema.aiMessage)
+      .leftJoin(schema.aiFeedback, eq(schema.aiFeedback.messageId, schema.aiMessage.id))
       .where(eq(schema.aiMessage.personId, personId))
       .orderBy(asc(schema.aiMessage.createdAt)),
     consentHistoryOf(personId),
@@ -152,7 +154,7 @@ export async function buildMyDataExport(viewer: { personId: string; principal: P
     requests,
     notifications,
     payslips,
-    assistant: conversations.map((conversation) => ({ title: conversation.title, createdAt: conversation.createdAt, messages: (messagesOf.get(conversation.id) ?? []).map(({ role, body, toolResult, createdAt }) => ({ role, body, toolResult, createdAt })) })),
+    assistant: conversations.map((conversation) => ({ title: conversation.title, createdAt: conversation.createdAt, messages: (messagesOf.get(conversation.id) ?? []).map(({ role, body, toolResult, createdAt, feedback }) => ({ role, body, toolResult, createdAt, ...(feedback?.verdict ? { feedback } : {}) })) })),
     privacy: { consents: consents.map((row) => ({ purpose: row.purpose, decision: row.decision, at: row.at, noticeVersion: row.noticeVersion, noticeLocale: row.noticeLocale, noticeText: row.noticeText })), faceEnrolment: face ? { templates: face.templates, consentAt: face.consentAt } : null },
   };
 

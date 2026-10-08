@@ -60,13 +60,16 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  keepMounted,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
+  /** Keeps what is inside alive while closed — a conversation in progress, say. */
+  keepMounted?: boolean
 }) {
   const desk = useDesk()
   return (
-    <DialogPortal>
+    <DialogPortal keepMounted={keepMounted}>
       <DialogOverlay />
       <DialogPrimitive.Viewport className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
         <DialogPrimitive.Popup

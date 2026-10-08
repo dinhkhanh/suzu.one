@@ -2,7 +2,7 @@
 // The set lives in the app (it needs the app's retrieval, which needs the app's services), so the
 // app must be up: `pnpm dev` in another terminal, then `pnpm ai:eval`. `pnpm ai:eval --agent --yes`
 // runs evaluation set v2 on the agent and the real models instead (Phase 13) — it costs money;
-// `--acting` runs only R4's acting set and the red team.
+// `--acting` runs only R4's acting set and the red team; `--pay` only the payroll persona and the red team.
 import { get } from "node:http";
 import { config } from "dotenv";
 
@@ -24,6 +24,7 @@ type AgentReport = {
   byKind: Record<string, { total: number; passed: number; percent: number }>;
   byFinalTier: Record<string, number>;
   cost: { turns: number; p50MicroUsd: number; p95MicroUsd: number; totalMicroUsd: number };
+  latency?: { p50Ms: number; p95Ms: number; maxMs: number };
   failures: { id: string; who: string; kind: string; question: string; problem: string | null; tools: string[]; tiers: string[] }[];
 };
 
@@ -40,6 +41,8 @@ function printAgent(report: AgentReport) {
   for (const [kind, bucket] of Object.entries(report.byKind)) console.log(`  ${kind.padEnd(14)} ${String(bucket.percent).padStart(5)}%  (${bucket.passed}/${bucket.total}, exit ≥ ${AGENT_EXIT[kind] ?? "?"}%)`);
   console.log(`  turns ending on each tier: ${Object.entries(report.byFinalTier).map(([tier, count]) => `${tier} ${count}`).join(" · ")}`);
   console.log(`  cost per turn: p50 ${usd(report.cost.p50MicroUsd)} · p95 ${usd(report.cost.p95MicroUsd)} · ${report.cost.turns} turns, ${usd(report.cost.totalMicroUsd)} in all`);
+  // NFR-AGT-01: a full answer p50 < 8 s, p95 < 20 s — measured on this machine, without the phone's network.
+  if (report.latency) console.log(`  time per turn: p50 ${(report.latency.p50Ms / 1000).toFixed(1)} s · p95 ${(report.latency.p95Ms / 1000).toFixed(1)} s · max ${(report.latency.maxMs / 1000).toFixed(1)} s`);
   if (report.failures.length > 0) {
     console.log("");
     console.log(`  ${report.failures.length} failing:`);
@@ -68,7 +71,7 @@ async function main() {
   let response: { status: number; text: string };
   try {
     response = await new Promise((resolve, reject) => {
-      const job = agent ? (process.argv.includes("--acting") ? "ai-eval-agent-acting" : "ai-eval-agent") : "ai-eval";
+      const job = agent ? (process.argv.includes("--acting") ? "ai-eval-agent-acting" : process.argv.includes("--pay") ? "ai-eval-agent-pay" : "ai-eval-agent") : "ai-eval";
       const request = get(`${base}/api/cron/${job}`, { headers: { authorization: `Bearer ${secret}` } }, (reply) => {
         let text = "";
         reply.setEncoding("utf8");

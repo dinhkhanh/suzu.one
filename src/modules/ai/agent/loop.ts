@@ -26,7 +26,7 @@ import type { Citation } from "../engine/answer";
 import type { HistoryMessage } from "../engine/history";
 import { NO_USAGE, type TokenUsage } from "../engine/limits";
 import { type CalledTool, firstStep, type ModelTier, type NextStep, nextStep, TURN_CEILINGS } from "../engine/tiers";
-import type { AgentCard, AgentStep, AgentToolOutcome, AiNotice } from "../enums";
+import type { AgentCard, AgentStep, AgentToolOutcome, AiNotice, PageContext } from "../enums";
 import type { AgentDriver, AgentReply } from "./driver";
 import { askerFactsOf } from "./facts";
 import { PROPOSALS_PER_TURN } from "../proposals";
@@ -59,6 +59,15 @@ export type AgentTurnInput = {
   facts?: AskerFacts;
   /** The question asks for something to be done (`asksToAct`): the turn starts on the second tier. */
   acting?: boolean;
+  /**
+   * The question asks about somebody else's pay (Phase 9's router says so): the turn starts on the
+   * second tier too — when the asker is offered `salary_estimate`. For anybody else there is no pay
+   * tool to reach for, and Haiku answers it as before (measured 2026-10-08: on Sonnet, an HR staff
+   * member's "lương net của X" once came back with an example figure; on Haiku it never did).
+   */
+  othersPay?: boolean;
+  /** The record on the asker's screen, when they asked from the sheet (FR-AGT-02). */
+  page?: PageContext | null;
 };
 
 const DECLINE: Anthropic.Tool = {
@@ -122,7 +131,7 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
   const tools: Anthropic.Tool[] = [...offered.map((tool): Anthropic.Tool => ({ name: tool.name, description: tool.description, input_schema: inputSchemaOf(tool) })), CLARIFY, { ...DECLINE, cache_control: { type: "ephemeral" } }];
   const system: Anthropic.TextBlockParam[] = [
     { type: "text", text: AGENT_SYSTEM, cache_control: { type: "ephemeral" } },
-    { type: "text", text: turnContext({ today: input.today, locale: input.locale, askerName: input.user.person.fullName ?? "an employee" }) },
+    { type: "text", text: turnContext({ today: input.today, locale: input.locale, askerName: input.user.person.fullName ?? "an employee", page: input.page ?? null }) },
   ];
   const messages: Anthropic.MessageParam[] = [...input.history.map((message) => ({ role: message.role, content: message.content })), { role: "user", content: input.question }];
   const context: ToolContext = { user: input.user, today: input.today, locale: input.locale, turnId };
@@ -134,7 +143,7 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
   const toolNames = new Map<string, string>();
   let compensation = false;
   let proposals = 0;
-  let step: NextStep = firstStep(input.acting ?? false);
+  let step: NextStep = firstStep((input.acting ?? false) || ((input.othersPay ?? false) && byName.has("salary_estimate")));
   let calls = 0;
   let callsOnTier = 0;
   let tier: ModelTier = "simple";

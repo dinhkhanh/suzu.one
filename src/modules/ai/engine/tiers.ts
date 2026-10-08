@@ -52,12 +52,18 @@ export type NextStep = { kind: "call"; tier: ModelTier; withTools: boolean } | {
 export const FIRST_STEP: NextStep = { kind: "call", tier: "simple", withTools: true };
 
 /**
- * The first call of a turn that asks for something to be done (R4, `asksToAct`): Sonnet. Measured
- * 2026-10-07 on the acting set, Haiku declined one request in seven as out of scope and stopped after a
- * look-up one in six instead of proposing; a card that names the wrong task costs the person more than
- * the second tier does. Decided by the app from the question, never by a model.
+ * The first call of a turn the app starts on Sonnet, decided from the question, never by a model:
+ *
+ * - a request to do something (R4, `asksToAct`). Measured 2026-10-07 on the acting set, Haiku declined
+ *   one request in seven as out of scope and stopped after a look-up one in six instead of proposing;
+ *   a card that names the wrong task costs the person more than the second tier does;
+ * - a question about somebody else's pay (R5: Phase 9's router reads it as `payslip_explain` about
+ *   "other") from an asker who is offered `salary_estimate`. Measured 2026-10-08, Haiku stopped at the
+ *   directory card for two of twelve C&B questions instead of calling it, although its result and the
+ *   prompt both say not to; with Sonnet first, twelve of twelve. The tool still refuses whoever may
+ *   not see the figure, so this changes which model asks, never what it may read.
  */
-export const firstStep = (acting: boolean): NextStep => (acting ? { kind: "call", tier: "standard", withTools: true } : FIRST_STEP);
+export const firstStep = (standard: boolean): NextStep => (standard ? { kind: "call", tier: "standard", withTools: true } : FIRST_STEP);
 
 /**
  * The next call, after one that asked for tools and whose tools have run. "stop" means the turn has

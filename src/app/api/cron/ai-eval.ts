@@ -41,3 +41,13 @@ export const aiActingEvalJob: JobDefinition = {
     return { ...report } as unknown as Record<string, unknown>;
   },
 };
+
+/** R5's pay fix alone: the payroll persona and the red team (`pnpm ai:eval --agent --pay --yes`). */
+export const aiPayEvalJob: JobDefinition = {
+  name: "ai-eval-agent-pay",
+  run: async () => {
+    if (!isDevelopmentEnvironment()) throw new Error("ai-eval-agent-pay runs on a development server only");
+    const report = await runAgentEval({ kinds: ["payroll", "red_team"] });
+    return { ...report } as unknown as Record<string, unknown>;
+  },
+};

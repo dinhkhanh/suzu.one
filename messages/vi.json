@@ -11625,7 +11625,48 @@
       "noCostPerHire": "Chi phí trên mỗi lượt tuyển chưa được tính: hệ thống chưa ghi nhận chi phí tuyển dụng."
     }
   },
+  "assistantSheet": {
+    "button": "Hỏi SuZu",
+    "hint": "Hỏi trợ lý về trang này hoặc nhờ làm giúp",
+    "title": "Hỏi SuZu",
+    "loading": "Đang mở trợ lý…",
+    "failed": "Không mở được trợ lý. Tải lại trang rồi thử lại nhé."
+  },
   "assistant": {
+    "feedback": {
+      "right": "Đúng",
+      "wrong": "Sai",
+      "noteRight": "Điều gì hữu ích? (không bắt buộc)",
+      "noteWrong": "Sai ở đâu? (không bắt buộc)",
+      "placeholder": "Ví dụ: số ngày phép không khớp với trang Nghỉ phép",
+      "share": "Chia sẻ câu hỏi và câu trả lời này với người phụ trách trợ lý. Không tích thì họ chỉ thấy đúng / sai và ghi chú của bạn.",
+      "send": "Gửi",
+      "cancel": "Huỷ",
+      "thanks": "Cảm ơn bạn — đã ghi nhận."
+    },
+    "sheet": {
+      "context": {
+        "task": "Đang ở: việc này — hỏi “việc này” là SuZu hiểu.",
+        "project": "Đang ở: dự án này — hỏi “dự án này” là SuZu hiểu.",
+        "person": "Đang ở: hồ sơ người này — hỏi “người này” là SuZu hiểu."
+      },
+      "noContext": "Hỏi về công việc, quy định, hoặc nhờ SuZu làm giúp.",
+      "full": "Mở toàn trang",
+      "suggest": {
+        "task": {
+          "first": "Việc này đang thế nào?",
+          "second": "Ghi 1 giờ cho việc này hôm nay"
+        },
+        "project": {
+          "first": "Dự án này đang thế nào?",
+          "second": "Dự án này có rủi ro nào đang mở?"
+        },
+        "person": {
+          "first": "Cho mình xem tổng quan về người này",
+          "second": "Người này đang làm những việc gì?"
+        }
+      }
+    },
     "title": "Hỏi SuZu",
     "intro": "Trả lời từ các trang Tri thức bạn được xem, kèm liên kết tới trang gốc. Chỉ những trang bạn mở được mới được dùng.",
     "askLabel": "Câu hỏi của bạn",
@@ -11902,6 +11943,17 @@
       "approver": "Ai duyệt đơn nghỉ phép của tôi?"
     },
     "unanswered": {
+      "feedback": {
+        "tab": "Phản hồi",
+        "title": "Phản hồi về câu trả lời",
+        "intro": "Đúng / sai mọi người chấm cho câu trả lời của trợ lý, kèm ghi chú. Câu hỏi và câu trả lời chỉ hiện khi người hỏi chọn chia sẻ; người chấm không được nêu tên.",
+        "right": "Đúng",
+        "wrong": "Sai",
+        "empty": "Chưa có phản hồi nào.",
+        "noNote": "Không có ghi chú.",
+        "tools": "Đã xem: {tools}",
+        "notShared": "Người hỏi không chia sẻ câu hỏi và câu trả lời."
+      },
       "link": "Câu hỏi chưa trả lời được",
       "back": "Hỏi SuZu",
       "title": "Câu hỏi chưa trả lời được",
@@ -11952,7 +12004,9 @@
       "ai_conversation_not_found": "Không tìm thấy cuộc trò chuyện.",
       "ai_unanswered_not_found": "Câu hỏi này đã được xử lý rồi.",
       "ai_limit_day": "Bạn đã hỏi hết số lượt của hôm nay. Mai hỏi tiếp nhé.",
-      "ai_limit_burst": "Bạn hỏi nhanh quá. Chờ một phút rồi hỏi tiếp nhé."
+      "ai_limit_burst": "Bạn hỏi nhanh quá. Chờ một phút rồi hỏi tiếp nhé.",
+      "ai_message_not_found": "Không tìm thấy câu trả lời này.",
+      "offline": "Không kết nối được. Kiểm tra mạng rồi thử lại nhé."
     },
     "tools": {
       "fromYourRecord": "Số liệu lấy từ hồ sơ của chính bạn, không phải từ trang Tri thức. Mở màn hình gốc để xem chi tiết.",
@@ -14325,7 +14379,7 @@
     "privacy": {
       "title": "Chính sách quyền riêng tư",
       "description": "Cách SuZu Group thu thập, sử dụng, chia sẻ và bảo vệ dữ liệu cá nhân trong SuZu One.",
-      "updated": "Cập nhật lần cuối: 30/09/2026",
+      "updated": "Cập nhật lần cuối: 07/10/2026",
       "intro": [
         "Chính sách này giải thích cách Công ty Cổ phần SuZu Group (\"SuZu Group\", \"chúng tôi\") thu thập, sử dụng, chia sẻ và bảo vệ dữ liệu cá nhân trong SuZu One — nền tảng vận hành nội bộ tại https://suzu.one (\"Dịch vụ\").",
         "SuZu One là công cụ nội bộ, chỉ dành cho nhân viên, cộng tác viên và nhân sự khác của SuZu Group và các công ty liên kết đã được cấp tài khoản Google Workspace của công ty trên suzu.vn hoặc suzu.group. Dịch vụ không cung cấp cho công chúng. Trang tuyển dụng công khai tại https://suzu.one/careers áp dụng thông báo quyền riêng tư hiển thị trên mẫu ứng tuyển."
@@ -14392,7 +14446,8 @@
           "list": [
             "vận hành các quy trình nhân sự của công ty: hồ sơ nhân viên, chấm công, nghỉ phép, tiền lương, bảo hiểm xã hội bắt buộc và thuế thu nhập cá nhân, tuyển dụng và đánh giá hiệu suất;",
             "tổ chức và theo dõi công việc: nhiệm vụ, dự án, đề xuất và phê duyệt;",
-            "chia sẻ tri thức và thông báo nội bộ, và trả lời câu hỏi từ kho tri thức của công ty;",
+            "chia sẻ tri thức và thông báo nội bộ;",
+            "trợ lý Hỏi SuZu: trả lời câu hỏi từ kho tri thức và từ dữ liệu trong Dịch vụ mà chính người hỏi được xem — có thể gồm dữ liệu cá nhân của nhân viên, kể cả tiền lương khi người hỏi có quyền xem — và soạn sẵn những thay đổi chỉ được thực hiện khi người hỏi bấm Xác nhận;",
             "gửi thông báo về công việc của bạn qua email, thông báo trình duyệt hoặc Google Chat;",
             "bảo mật Dịch vụ: xác thực, kiểm soát truy cập, ghi nhật ký kiểm toán và ngăn chặn lạm dụng;",
             "duy trì Dịch vụ hoạt động: theo dõi lỗi và khắc phục sự cố;",
@@ -14433,7 +14488,7 @@
             "Resend — gửi email do Dịch vụ phát đi;",
             "Functional Software Inc. (Sentry) — theo dõi lỗi;",
             "Google LLC — đăng nhập Google Workspace, và thông báo, lịch họp qua Google Chat, Google Lịch khi công ty bật các tính năng này;",
-            "Anthropic PBC — trợ lý, khi công ty bật tính năng này; họ nhận câu hỏi được đặt ra và nội dung kho tri thức cần để trả lời."
+            "Anthropic PBC — trợ lý Hỏi SuZu, khi công ty bật tính năng này. Họ nhận câu hỏi được đặt ra, nội dung kho tri thức và phần dữ liệu trong Dịch vụ cần để trả lời mà người hỏi được xem — có thể gồm dữ liệu cá nhân của nhân viên, kể cả tiền lương khi người hỏi có quyền xem và vừa xác nhận lại danh tính. Số điện thoại, email, số giấy tờ tùy thân và tài khoản ngân hàng không được gửi đi. Anthropic xử lý dữ liệu theo điều khoản thương mại của họ và lưu giữ theo thời hạn tiêu chuẩn của họ — công ty không dùng chế độ không lưu giữ dữ liệu (zero data retention) — và không dùng dữ liệu này để huấn luyện mô hình."
           ],
           "after": [
             "Chúng tôi cũng cung cấp dữ liệu cá nhân khi pháp luật yêu cầu — ví dụ cho cơ quan thuế, cơ quan bảo hiểm xã hội hoặc ngân hàng chi trả lương — và, nếu SuZu Group hoặc một công ty trong nhóm được tổ chức lại, sáp nhập hay chuyển nhượng, cho bên kế thừa với cùng mức bảo vệ."
@@ -14452,7 +14507,8 @@
             "Hồ sơ việc làm, chấm công và nghỉ phép: trong thời gian bạn làm việc và sau đó trong thời hạn pháp luật lao động và bảo hiểm xã hội yêu cầu.",
             "Hồ sơ tiền lương, thuế và kế toán: trong thời hạn pháp luật thuế và kế toán Việt Nam yêu cầu (tối đa mười năm).",
             "Nhật ký kiểm toán: trong thời gian cần thiết cho bảo mật và để chứng minh việc tuân thủ.",
-            "Phiên đăng nhập: bảy ngày kể từ lần hoạt động cuối. Báo cáo lỗi: một thời hạn giới hạn, sau đó tự động bị xoá."
+            "Phiên đăng nhập: bảy ngày kể từ lần hoạt động cuối. Báo cáo lỗi: một thời hạn giới hạn, sau đó tự động bị xoá.",
+            "Cuộc trò chuyện với trợ lý Hỏi SuZu, kèm phản hồi đúng / sai bạn gửi: 180 ngày kể từ lần cuối cuộc trò chuyện được dùng, hoặc đến khi bạn xoá. Câu trả lời có số liệu tiền lương chỉ hiện một lần và không được lưu."
           ],
           "after": [
             "Khi hết thời hạn lưu trữ, chúng tôi xoá dữ liệu hoặc ẩn danh hoá dữ liệu."
@@ -14565,7 +14621,7 @@
         {
           "heading": "7. Trợ lý và các tính năng tự động",
           "body": [
-            "Trợ lý và các tính năng tự động khác trả lời dựa trên kho tri thức của công ty và có thể chưa đầy đủ hoặc chưa chính xác. Hãy đối chiếu các câu trả lời quan trọng với tài liệu gốc, và không chỉ dựa vào chúng để ra quyết định pháp lý, tài chính hay nhân sự."
+            "Trợ lý và các tính năng tự động khác trả lời dựa trên kho tri thức của công ty và những dữ liệu bạn được xem, và có thể chưa đầy đủ hoặc chưa chính xác. Hãy đối chiếu các câu trả lời quan trọng với tài liệu gốc hoặc màn hình được dẫn, và không chỉ dựa vào chúng để ra quyết định pháp lý, tài chính hay nhân sự. Trợ lý không tự thay đổi gì: một thay đổi trợ lý soạn sẵn chỉ được thực hiện khi bạn bấm Xác nhận, như thể chính bạn thao tác, nên hãy đọc kỹ từng trường trước khi xác nhận."
           ]
         },
         {

@@ -22,6 +22,8 @@ import { shouldShowWelcome, WELCOME_LATER_COOKIE, welcomeSteps } from "@/modules
 import { getTheme } from "@/theme/server";
 import { CommandPalette } from "@/modules/work/ui/command-palette";
 import { FeedbackButton } from "@/modules/feedback/ui/feedback-button";
+import { canAskAssistant } from "@/modules/ai/policy";
+import { AgentSheet } from "@/modules/ai/ui/agent-sheet";
 
 // The app paints edge to edge on a phone, under the home indicator and beside the notch, and pads
 // its own bars away from them with env(safe-area-inset-*) — which is 0 everywhere without this.
@@ -99,8 +101,14 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         unread={unread}
         pins={user.preferences.navPins}
         user={{ name: user.person.fullName, email: user.email, photoUrl: photoUrlOf(user.person) }}
-        // Feedback on the app, one click from every page while it is new to everybody.
-        headerEnd={<FeedbackButton />}
+        // The assistant over the page it is opened on (FR-AGT-01), and feedback on the app, one click
+        // from every page while it is new to everybody.
+        headerEnd={
+          <>
+            {canAskAssistant(user.principal) ? <AgentSheet /> : null}
+            <FeedbackButton />
+          </>
+        }
         // Seeing the app as somebody else (FR-PLT-40) is said on every page, with the way back.
         // Below it, once: the offer to get pushes on this device. Not while borrowing somebody's
         // view — the device would end up registered for them.

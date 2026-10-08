@@ -2,6 +2,9 @@
 
 Bên cạnh trả lời từ Tri thức, **Hỏi SuZu** trả lời được bốn loại câu hỏi về *chính bạn* bằng số liệu thật trong hồ sơ: ngày phép còn lại, tóm tắt chấm công, người duyệt đơn và giải thích phiếu lương. Trang này giải thích cách hỏi, SuZu trả lời ra sao và khi nào SuZu từ chối.
 
+> [!NOTE]
+> Trang này mô tả bốn câu hỏi SuZu trả lời *không cần mô hình AI* — nhanh và không tốn lượt chi phí. Với trợ lý mới (xem **Hỏi SuZu**), bạn hỏi được nhiều hơn thế về ngày làm việc, giờ đã ghi, đề xuất… của mình; bốn câu dưới đây vẫn được trả lời theo cách này.
+
 ## Cách SuZu nhận ra câu hỏi "về tôi"
 
 SuZu chỉ lấy số liệu cá nhân khi câu hỏi nói rõ là về bạn — có các từ như *tôi*, *mình*, *em*, *của tôi*, *cho tôi* (hoặc *I*, *my*, *me* trong tiếng Anh) — và đúng một trong bốn chủ đề dưới đây. Những câu hỏi chung chung như *"Một năm được bao nhiêu ngày phép?"* vẫn được trả lời từ trang Tri thức, vì đó là câu hỏi về chính sách chứ không phải về số dư của bạn.

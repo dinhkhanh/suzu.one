@@ -6,7 +6,9 @@ import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page"
 import { RecordLink } from "@/components/ui/record-link";
 import { Segmented } from "@/components/ui/segmented";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AI_LIMITS, assistantUsage, canReadAssistantUsage, canReadUnansweredLog, listUnanswered, USAGE_DAYS } from "@/modules/ai/service";
+import { AI_LIMITS, assistantUsage, canReadAssistantUsage, canReadUnansweredLog, listFeedback, listUnanswered, USAGE_DAYS } from "@/modules/ai/service";
+import { Badge } from "@/components/ui/badge";
+import { AnswerMarkdown } from "@/modules/ai/ui/answer-markdown";
 import { ResolveUnansweredForm } from "@/modules/ai/ui/resolve-form";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
@@ -18,7 +20,8 @@ export const generateMetadata = pageTitle("unansweredQuestions");
  * first. For the people who keep it (`kb:manage`), because that is what it is for — each keeper
  * the questions of the people inside their grant.
  *
- * The owner has a third view beside it: what the assistant was used for and what it cost over the
+ * Beside it, for the same readers, the đúng / sai people gave on answers (`?show=feedback`, FR-AGT-51).
+ * The owner has a fourth view: what the assistant was used for and what it cost over the
  * last thirty days, per person and per day (`?show=usage`). Anybody else asking for it gets the
  * open questions.
  */
@@ -27,12 +30,14 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
   if (!canReadUnansweredLog(user.principal)) notFound();
   const params = await props.searchParams;
   const owner = canReadAssistantUsage(user.principal);
-  const view = params.show === "usage" && owner ? "usage" : params.show === "resolved" ? "all" : "open";
-  const [t, format, rows, usage] = await Promise.all([
+  const view = params.show === "usage" && owner ? "usage" : params.show === "feedback" ? "feedback" : params.show === "resolved" ? "all" : "open";
+  const [t, tools, format, rows, usage, feedback] = await Promise.all([
     getTranslations("assistant.unanswered"),
+    getTranslations("assistant.agent.tools"),
     getFormatter(),
-    view === "usage" ? Promise.resolve([]) : listUnanswered(user.principal, { resolved: view === "all" }),
+    view === "open" || view === "all" ? listUnanswered(user.principal, { resolved: view === "all" }) : Promise.resolve([]),
     view === "usage" ? assistantUsage() : Promise.resolve(null),
+    view === "feedback" ? listFeedback(user.principal) : Promise.resolve(null),
   ]);
   // Dollars, to the cent — and to a hundredth of a cent while the sums are still that small.
   const usd = (microUsd: number) => format.number(microUsd / 1_000_000, { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: microUsd > 0 && microUsd < 10_000 ? 4 : 2 });
@@ -54,13 +59,53 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
             options={[
               { value: "open", label: t("open"), href: "/assistant/unanswered" },
               { value: "all", label: t("all"), href: "/assistant/unanswered?show=resolved" },
+              { value: "feedback", label: t("feedback.tab"), href: "/assistant/unanswered?show=feedback" },
               ...(owner ? [{ value: "usage" as const, label: t("usage.tab"), href: "/assistant/unanswered?show=usage" }] : []),
             ]}
           />
         }
       />
 
-      {usage ? (
+      {feedback ? (
+        // Đúng / sai on answers (FR-AGT-51): the note, which tier and tools answered — and the
+        // question and the answer only when the asker shared them. Never who asked.
+        <Section title={t("feedback.title")} description={t("feedback.intro")}>
+          <TileGrid>
+            <Tile label={t("feedback.right")} value={format.number(feedback.right)} />
+            <Tile label={t("feedback.wrong")} value={format.number(feedback.wrong)} />
+          </TileGrid>
+          <List>
+            {feedback.rows.length === 0 ? <ListEmpty>{t("feedback.empty")}</ListEmpty> : null}
+            {feedback.rows.map((row) => (
+              <ListItem key={row.id} className="flex-col items-stretch gap-2 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={row.verdict === "right" ? "success" : "destructive"}>{t(`feedback.${row.verdict}`)}</Badge>
+                  <span className="text-xs text-faint">
+                    <span className="font-mono tabular-nums">{format.dateTime(row.createdAt, { dateStyle: "medium" })}</span>
+                    {row.tier ? ` · ${t.has(`usage.month.tiers.${row.tier}`) ? t(`usage.month.tiers.${row.tier as "simple"}`) : row.tier}` : ""}
+                    {row.model ? ` · ${row.model}` : ""}
+                  </span>
+                </div>
+                {row.note ? <p className="text-sm">{row.note}</p> : <p className="text-sm text-muted-foreground">{t("feedback.noNote")}</p>}
+                {row.tools.length > 0 ? <p className="text-xs text-muted-foreground">{t("feedback.tools", { tools: row.tools.map((tool) => (tools.has(tool) ? tools(tool) : tool)).join(" · ") })}</p> : null}
+                {row.question ? (
+                  <div className="flex flex-col gap-1 border-l-2 border-border pl-2.5 text-[0.8125rem]">
+                    <p className="font-medium">{row.question}</p>
+                    {/* As the asker read it — markdown turned into elements, never into HTML — kept short. */}
+                    {row.answer ? (
+                      <div className="max-h-40 overflow-hidden text-muted-foreground [mask-image:linear-gradient(to_bottom,black_65%,transparent)]">
+                        <AnswerMarkdown body={row.answer} citations={[]} />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-xs text-faint">{t("feedback.notShared")}</p>
+                )}
+              </ListItem>
+            ))}
+          </List>
+        </Section>
+      ) : usage ? (
         <>
           <Section title={t("usage.month.title")} description={t("usage.month.intro", { everyone: usd(usage.month.budget.dayMicroUsd.everyone), lead: usd(usage.month.budget.dayMicroUsd.lead), office: usd(usage.month.budget.dayMicroUsd.office) })}>
             <TileGrid>

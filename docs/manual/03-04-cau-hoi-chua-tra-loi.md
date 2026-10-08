@@ -18,7 +18,7 @@ Trưởng bộ phận quản lý không gian Tri thức riêng của đơn vị 
 
 ## Đọc danh sách
 
-Trang có hai bộ lọc:
+Trang có hai bộ lọc câu hỏi (và thẻ **Phản hồi**, xem bên dưới):
 
 - **Chưa xử lý** (mặc định) — những câu chưa được đánh dấu xong.
 - **Tất cả** — gồm cả những câu đã xử lý, kèm ngày và ghi chú.
@@ -51,6 +51,25 @@ Mọi bản sao của cùng câu hỏi trong phạm vi của bạn được đá
 - Nếu cùng câu hỏi được hỏi lại sau khi đã đánh dấu xong mà SuZu vẫn không trả lời được, câu hỏi sẽ xuất hiện lại trong **Chưa xử lý**.
 - Bạn chỉ xử lý được câu hỏi của người trong phạm vi của mình; bản sao do người ngoài phạm vi hỏi vẫn mở cho người quản lý của họ.
 - Nếu ai đó đã xử lý trước, hệ thống báo *Câu hỏi này đã được xử lý rồi.*
+
+## Phản hồi về câu trả lời
+
+Thẻ **Phản hồi** ([mở trực tiếp](/assistant/unanswered?show=feedback)) gom những lần người hỏi bấm 👍 **Đúng** hoặc 👎 **Sai** dưới một câu trả lời của SuZu, mới nhất trước. Cùng người được xem như danh sách câu hỏi: Chủ sở hữu thấy tất cả, người quản lý Tri thức thấy phản hồi của những người trong phạm vi của mình.
+
+Đầu trang là tổng số **Đúng** và **Sai**. Mỗi dòng cho biết:
+
+| Thông tin | Ý nghĩa |
+|---|---|
+| **Đúng** / **Sai** | Người hỏi chấm câu trả lời |
+| Ngày · mức mô hình · tên mô hình | Lần chấm gần nhất, và mức mô hình cuối cùng của lượt hỏi (đơn giản, phức tạp, rất phức tạp), hoặc cách trả lời không dùng mô hình |
+| Ghi chú | Người hỏi ghi sai ở đâu hay điều gì hữu ích |
+| **Đã xem: …** | Những gì SuZu đã đọc để trả lời (sổ tay, việc của bạn, tình hình dự án…) |
+| Câu hỏi và câu trả lời | **Chỉ hiện khi người hỏi tích chia sẻ.** Không tích thì dòng ghi *Người hỏi không chia sẻ câu hỏi và câu trả lời.* |
+
+Trang **không cho biết ai đã gửi** phản hồi. Một câu *Sai* kèm *Đã xem: sổ tay* thường là trang Tri thức thiếu hoặc cũ — xử lý như một câu hỏi chưa trả lời được. Một câu *Sai* về con số (giờ, ngày phép, tiến độ) mà trang Tri thức không liên quan, hãy báo Chủ sở hữu để kiểm tra trợ lý.
+
+> [!NOTE]
+> Phản hồi đi cùng cuộc trò chuyện: khi người hỏi xoá cuộc trò chuyện hoặc cuộc trò chuyện hết hạn lưu (180 ngày), phản hồi cũng mất.
 
 ## Mức dùng trợ lý (Chủ sở hữu)
 

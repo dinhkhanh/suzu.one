@@ -25,7 +25,7 @@ import { workCoverJob, workCyclesJob, workExitHandoverJob, workPreviewSweepJob, 
 import { dailyMissedReportsJob, dailyPlanRemindersJob, dailyReportRemindersJob, dailyTimesheetRemindersJob, dailyWeeklyReportsJob } from "@/modules/daily/jobs";
 import { projectPlansJob, projectRemindersJob, projectRetainersJob } from "@/modules/projects/jobs";
 import { crmMorningJob, crmNightlyJob } from "@/modules/crm/service";
-import { aiActingEvalJob, aiAgentEvalJob, aiEvalJob } from "./ai-eval";
+import { aiActingEvalJob, aiAgentEvalJob, aiEvalJob, aiPayEvalJob } from "./ai-eval";
 import { bonusDemoRunJob } from "./[job]/bonus-demo";
 import { cacheFlushJob } from "./[job]/cache-flush";
 import { payrollDemoRunsJob } from "./[job]/payroll-demo";
@@ -54,10 +54,10 @@ export const SCHEDULES: Record<string, JobDefinition[]> = {
 // Run by hand only: /api/cron/<job name>.
 // `payroll-demo-runs`, `bonus-demo-run`, `ai-eval` and `ai-eval-agent` refuse to run outside a development server.
 // `cache-flush` is what `pnpm cache:flush` calls.
-export const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob, bonusDemoRunJob, aiEvalJob, aiAgentEvalJob, aiActingEvalJob, cacheFlushJob];
+export const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob, bonusDemoRunJob, aiEvalJob, aiAgentEvalJob, aiActingEvalJob, aiPayEvalJob, cacheFlushJob];
 
 /** Jobs that only a development server runs: Admin → Jobs offers no "run now" for them. */
-export const DEVELOPMENT_ONLY = new Set([payrollDemoRunsJob.name, bonusDemoRunJob.name, aiEvalJob.name, aiAgentEvalJob.name, aiActingEvalJob.name]);
+export const DEVELOPMENT_ONLY = new Set([payrollDemoRunsJob.name, bonusDemoRunJob.name, aiEvalJob.name, aiAgentEvalJob.name, aiActingEvalJob.name, aiPayEvalJob.name]);
 
 /** Every job once — a job may sit in two schedules (the ops scheduler) and still run once by name. */
 export const ALL_JOBS: JobDefinition[] = [...new Map([...Object.values(SCHEDULES).flat(), ...ON_DEMAND].map((job) => [job.name, job])).values()];

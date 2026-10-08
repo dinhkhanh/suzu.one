@@ -14,6 +14,7 @@ export { runTool, type ToolAudit, type ToolRun, type ToolUser } from "./tools";
 export { chatDriver, type ChatDriver, LOCAL_DRIVER_NAME } from "./model";
 export { AI_HIT_RETENTION_DAYS, AI_LIMITS } from "./engine/limits";
 export { type AssistantUsage, assistantUsage, purgeAiUsageHits, USAGE_DAYS } from "./limits";
+export { type FeedbackList, type FeedbackRow, listFeedback } from "./feedback";
 export { canAskAssistant, canReadAssistantUsage, canReadUnansweredLog } from "./policy";
 export { CANDIDATES, retrievePassages } from "./retrieval";
 /**
