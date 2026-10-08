@@ -2,6 +2,7 @@
 // with the routes: it reaches into every module's jobs, which no module may do. Read by the cron
 // route (`[job]/route.ts`) and by Admin → Jobs ("run now", and which schedule a job belongs to).
 import "server-only";
+import { checkInRemindersJob } from "@/modules/attendance/checkin-reminders";
 import { faceLeaversJob } from "@/modules/attendance/faces";
 import { punchReviewRemindersJob } from "@/modules/attendance/punches";
 import { timesheetMonthReadyJob, timesheetRecomputeJob } from "@/modules/attendance/recompute";
@@ -51,6 +52,12 @@ export const SCHEDULES: Record<string, JobDefinition[]> = {
   evening: [dailyReportRemindersJob],
 };
 
+// Jobs with a cron line of their own that fires every few minutes (`*/<minutes> * * * *` in
+// vercel.json, path /api/cron/<job name>). Each says whether it is `due`, so only a tick with work
+// to do is recorded. The check-in reminder: five minutes after a working day starts — starts sit on
+// the hour or the half hour, so a five-minute tick lands on them.
+export const FREQUENT: { job: JobDefinition; minutes: number }[] = [{ job: checkInRemindersJob, minutes: 5 }];
+
 // Run by hand only: /api/cron/<job name>.
 // `payroll-demo-runs`, `bonus-demo-run`, `ai-eval` and `ai-eval-agent` refuse to run outside a development server.
 // `cache-flush` is what `pnpm cache:flush` calls.
@@ -60,10 +67,13 @@ export const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, p
 export const DEVELOPMENT_ONLY = new Set([payrollDemoRunsJob.name, bonusDemoRunJob.name, aiEvalJob.name, aiAgentEvalJob.name, aiActingEvalJob.name, aiPayEvalJob.name]);
 
 /** Every job once — a job may sit in two schedules (the ops scheduler) and still run once by name. */
-export const ALL_JOBS: JobDefinition[] = [...new Map([...Object.values(SCHEDULES).flat(), ...ON_DEMAND].map((job) => [job.name, job])).values()];
+export const ALL_JOBS: JobDefinition[] = [...new Map([...Object.values(SCHEDULES).flat(), ...FREQUENT.map((entry) => entry.job), ...ON_DEMAND].map((job) => [job.name, job])).values()];
 
 /** The job of this name, or null. */
 export const jobNamed = (name: string): JobDefinition | null => ALL_JOBS.find((job) => job.name === name) ?? null;
+
+/** How many minutes apart a frequent job's cron fires, or null — for Admin → Jobs. */
+export const everyMinutesOf = (name: string): number | null => FREQUENT.find((entry) => entry.job.name === name)?.minutes ?? null;
 
 /** Which schedules a job runs in, by name — for Admin → Jobs. */
 export function schedulesOf(name: string): string[] {

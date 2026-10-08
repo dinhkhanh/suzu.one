@@ -5,6 +5,7 @@
   "crons": [
     { "path": "/api/cron/midnight", "schedule": "5 17 * * *" },
     { "path": "/api/cron/morning", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/evening", "schedule": "0 11 * * *" }
+    { "path": "/api/cron/evening", "schedule": "0 11 * * *" },
+    { "path": "/api/cron/attendance-checkin-reminders", "schedule": "*/5 * * * *" }
   ]
 }

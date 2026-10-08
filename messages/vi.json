@@ -926,7 +926,7 @@
         "recruit": "Tuyển dụng",
         "performance": "Đánh giá hiệu suất",
         "projects": "Dự án",
-        "daily": "Kế hoạch & báo cáo ngày",
+        "daily": "Kế hoạch, báo cáo & chấm công ngày",
         "feedback": "Góp ý về SuZu One",
         "crm": "Khách hàng & kinh doanh"
       },
@@ -1381,6 +1381,10 @@
         "title": "Có số liệu KPI đề xuất",
         "body": "Số liệu thực tế của KPI “{kpi}” kỳ {period} đã được đề xuất từ dữ liệu công việc, chờ bạn xác nhận."
       },
+      "daily_checkin_reminder": {
+        "title": "Bạn chưa chấm công",
+        "body": "Ngày làm việc của bạn bắt đầu lúc {time} nhưng chưa có lần chấm công nào. Nếu bạn đã có mặt, hãy chấm công ngay."
+      },
       "daily_plan_reminder": {
         "title": "Lên kế hoạch hôm nay",
         "body": "Chọn những việc bạn sẽ làm hôm nay."
@@ -1657,6 +1661,7 @@
     "runs": "Lần chạy gần đây",
     "schedule": "Lịch",
     "daily": "Hằng ngày {time}",
+    "everyMinutes": "{minutes} phút một lần",
     "title": "Tác vụ tự động",
     "description": "Các tác vụ chạy theo lịch: cập nhật nhân sự hằng ngày, gửi email thông báo. Khi một tác vụ lỗi, Chủ sở hữu nhận được thông báo.",
     "started": "Bắt đầu",

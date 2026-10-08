@@ -45,7 +45,8 @@ async function continueSchedule(request: Request, schedule: string, from: number
 }
 
 // Vercel Cron calls this with `Authorization: Bearer $CRON_SECRET`. Nothing else may.
-// `/api/cron/<schedule>` runs a whole schedule; `/api/cron/<job name>` runs one job by hand;
+// `/api/cron/<schedule>` runs a whole schedule; `/api/cron/<job name>` runs one job (by hand, or a
+// job with its own frequent cron, which first asks the job whether it is `due`);
 // `/api/cron/<schedule>?from=<n>` is a schedule handing its tail on to itself.
 export async function GET(request: Request, context: RouteContext<"/api/cron/[job]">) {
   if (!authorized(request)) return new Response("Unauthorized", { status: 401 });
@@ -71,6 +72,7 @@ export async function GET(request: Request, context: RouteContext<"/api/cron/[jo
 
   const definition = jobNamed(job);
   if (!definition) return new Response("Unknown job", { status: 404 });
+  if (definition.due && !(await definition.due())) return Response.json({ outcomes: [{ job: definition.name, status: "not_due", result: null, error: null }] satisfies JobOutcome[] });
   const run = await runJob(definition);
   const outcomes: JobOutcome[] = [{ job: definition.name, status: run?.status === "succeeded" || run?.status === "failed" ? run.status : "already_running", result: run?.result ?? null, error: run?.error ?? null }];
   return Response.json({ outcomes }, { status: statusOf(outcomes) });

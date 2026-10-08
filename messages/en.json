@@ -926,7 +926,7 @@
         "recruit": "Recruitment",
         "performance": "Performance reviews",
         "projects": "Projects",
-        "daily": "Daily plan & report",
+        "daily": "Daily plan, report & check-in",
         "feedback": "Feedback on SuZu One",
         "crm": "Clients & sales"
       },
@@ -1381,6 +1381,10 @@
         "title": "KPI actual proposed",
         "body": "The actual of KPI “{kpi}” for {period} was proposed from work data and waits for your confirmation."
       },
+      "daily_checkin_reminder": {
+        "title": "You have not checked in yet",
+        "body": "Your day started at {time} and no check-in has come in. If you are already at work, check in now."
+      },
       "daily_plan_reminder": {
         "title": "Plan your day",
         "body": "Pick what you will work on today."
@@ -1657,6 +1661,7 @@
     "runs": "Recent runs",
     "schedule": "Schedule",
     "daily": "Daily at {time}",
+    "everyMinutes": "Every {minutes} minutes",
     "title": "Scheduled jobs",
     "description": "Work that runs on a schedule: the daily people roll-over, notification emails. Owners are notified when a job fails.",
     "started": "Started",
