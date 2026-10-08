@@ -24,6 +24,7 @@ import { loadReportReader, workRecordOf } from "@/modules/daily/service";
 import { getLeaveBalanceFor } from "@/modules/leave/service";
 import { canReadPerformanceOf, canReadResultOf, getPerformanceResults, getPublishedResult, loadDirectory } from "@/modules/performance/service";
 import { getPersonTaskStats } from "@/modules/work/service";
+import { nameGuess } from "../../engine/name-match";
 import { type AnyAgentTool, defineTool } from "../registry";
 import { peopleNamed, personCard } from "./lookup";
 
@@ -57,10 +58,13 @@ const personOverview = defineTool({
   tags: ["analysis"],
   run: async ({ user, today }, input) => {
     let personId = UUID.test(input.person) ? input.person : null;
+    let guessed = false;
     if (!personId) {
-      const found = await peopleNamed(user.principal, input.person);
+      const named = await peopleNamed(user.principal, input.person);
+      const found = named.rows;
+      guessed = named.guessed;
       if (found.length === 0) return { outcome: "empty", model: { people: [], link: "/people" }, card: null, subject: null };
-      if (found.length > 1) return { outcome: "answered", model: { note: "Several people match: ask which one.", people: found.map(personCard) }, card: null, subject: null };
+      if (found.length > 1) return { outcome: "answered", model: { note: "Several people match: ask which one.", people: found.map(personCard), ...nameGuess(named) }, card: null, subject: null };
       personId = found[0].id;
     }
     // The card first: no card, nothing — the directory decides whether this person exists for the asker.
@@ -92,6 +96,7 @@ const personOverview = defineTool({
       entity: view.entityName,
       manager: view.current?.managerName ?? null,
       ...(view.personal ? { startDate: view.personal.startDate, status: view.personal.status } : {}),
+      ...nameGuess({ guessed }),
     };
     const shown: string[] = ["card"];
     if (tasks) {

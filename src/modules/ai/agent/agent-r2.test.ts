@@ -125,15 +125,53 @@ describe("a name is resolved within the asker's directory (D33, FR-AGT-12)", () 
   });
 
   it("prefers whole words: Huy is not Thùy, nor Huỳnh", async () => {
-    const { wholeWordMatches } = await import("./tools/lookup");
+    const { peopleMatching } = await import("./tools/lookup");
     const rows = [{ fullName: "Hồ Gia Huy" }, { fullName: "Dương Thùy Chi" }, { fullName: "Huỳnh Mỹ Duyên" }];
-    expect(wholeWordMatches(rows, "Huy").map((row) => row.fullName)).toEqual(["Hồ Gia Huy"]);
-    expect(wholeWordMatches(rows, "Duyen").map((row) => row.fullName)).toEqual(["Huỳnh Mỹ Duyên"]);
-    expect(wholeWordMatches(rows, "Hu").map((row) => row.fullName)).toHaveLength(3);
+    expect(peopleMatching(rows, "Huy").rows.map((row) => row.fullName)).toEqual(["Hồ Gia Huy"]);
+    expect(peopleMatching(rows, "Duyen").rows.map((row) => row.fullName)).toEqual(["Huỳnh Mỹ Duyên"]);
+    expect(peopleMatching(rows, "Hu").rows.map((row) => row.fullName)).toHaveLength(3);
+  });
+
+  it("finds a name typed loosely — misspelt, in another order, as initials — and says it guessed", async () => {
+    const misspelt = await run("bao", "find_person", { name: "Hoang Lnog" });
+    expect(text(misspelt.model)).toContain(ids.long);
+    expect(misspelt.model).toHaveProperty("nameGuessed");
+    const initials = await run("bao", "find_person", { name: "HGH" });
+    expect(text(initials.model)).toContain(ids.huy);
+    const reordered = await run("bao", "find_person", { name: "Gia Huy Ho" });
+    expect(text(reordered.model)).toContain(ids.huy);
+    expect(reordered.model).not.toHaveProperty("nameGuessed");
+  });
+
+  it("reads a misspelt name the same way for a colleague's overview", async () => {
+    const result = await run("long", "person_overview", { person: "Ho Gia Huyy" });
+    expect(result.outcome).toBe("answered");
+    expect(result.subject).toEqual({ type: "person", id: ids.huy });
+    expect(result.model).toHaveProperty("nameGuessed");
   });
 
   it("finds nobody for a name nobody has", async () => {
     expect((await run("bao", "find_person", { name: "khong ai ten nay" })).outcome).toBe("empty");
+  });
+});
+
+describe("projects and tasks named loosely, still only as the asker may open them", () => {
+  it("guesses a misspelt project among those the asker may open, and no other", async () => {
+    const found = await run("huy", "find_project", { query: "TVC Tett" });
+    expect(text(found.model)).toContain(ids.teamProject);
+    expect(found.model).toHaveProperty("nameGuessed");
+    expect((await run("huy", "find_project", { query: "Pitch confidental" })).outcome).toBe("empty");
+    expect((await run("tam", "project_status", { project: "Pitch confidental" })).subject).toEqual({ type: "project", id: ids.secret });
+  });
+
+  it("finds a task by its title without marks, or misspelt", async () => {
+    const unmarked = await run("huy", "find_task", { query: "goi" });
+    expect(text(unmarked.model)).toContain("Rough cut");
+    expect(unmarked.model).not.toHaveProperty("nameGuessed");
+    const misspelt = await run("huy", "find_task", { query: "rouhg cutt" });
+    expect(text(misspelt.model)).toContain("Rough cut");
+    expect(misspelt.model).toHaveProperty("nameGuessed");
+    expect((await run("huy", "find_task", { query: "Pitch dekc" })).outcome).toBe("empty");
   });
 });
 

@@ -29,7 +29,6 @@ import {
   projectFacts,
   raiseBlockerInput,
   resolveBlockerInput,
-  searchTasks,
   type StateRow,
   taskKey,
   teamFacts,
@@ -37,11 +36,12 @@ import {
   type WorkViewer,
   workDirectory,
 } from "@/modules/work/service";
+import { namedRows, pickNamedRow } from "../../engine/name-match";
 import { modelText } from "../../engine/views";
 import { PALETTE_CREATE, type ProposalField } from "../../enums";
 import { isUuid, notifyNames, notProposed, pickPerson, propose } from "../propose";
 import { type AgentUser, type AnyAgentTool, defineTool, type ToolResult } from "../registry";
-import { projectLine, projectsMatching, visiblePortfolio, workViewerOf } from "./lookup";
+import { projectLine, projectsMatching, tasksNamed, visiblePortfolio, workViewerOf } from "./lookup";
 
 const everyone = () => true;
 const DATE = z.iso.date();
@@ -60,7 +60,8 @@ export async function taskNamed(user: AgentUser, ref: string): Promise<Found | T
   const viewer = await workViewerOf(user);
   let id: string | null = isUuid(ref) ? ref.trim() : null;
   if (!id) {
-    const hits = await searchTasks(viewer, ref, 6);
+    // A guessed title still makes a card: the card names the task, and nothing happens until the asker confirms it.
+    const hits = (await tasksNamed(viewer, ref, 6)).rows;
     const exact = hits.find((hit) => hit.key.toLowerCase() === ref.trim().toLowerCase());
     if (exact) id = exact.id;
     else if (hits.length === 1) id = hits[0].id;
@@ -114,7 +115,7 @@ const proposeTask = defineTool({
     let projectId: string | null = null;
     let place: ProposalField;
     if (input.project) {
-      const rows = projectsMatching(await visiblePortfolio(user, today), input.project);
+      const rows = projectsMatching(await visiblePortfolio(user, today), input.project).rows;
       if (rows.length === 0) return notProposed("project_not_found");
       if (rows.length > 1) return notProposed("several_projects", { projects: rows.slice(0, 8).map(projectLine), next: "Ask the asker which project." });
       const found = await findProject(rows[0].id);
@@ -127,8 +128,7 @@ const proposeTask = defineTool({
       const mine = open.filter((team) => viewer.teamRoles.has(team.id));
       let team = mine.length === 1 ? mine[0] : undefined;
       if (input.team) {
-        const wanted = toSearchKey(input.team);
-        const matching = open.filter((candidate) => toSearchKey(candidate.key) === wanted || toSearchKey(candidate.name).includes(wanted));
+        const matching = namedRows(open, input.team, (candidate) => [candidate.key, candidate.name]).rows;
         if (matching.length !== 1) return notProposed(matching.length ? "several_teams" : "team_not_found", { teams: (matching.length ? matching : mine).slice(0, 8).map((candidate) => ({ key: candidate.key, name: candidate.name })) });
         team = matching[0];
       }
@@ -184,8 +184,8 @@ export function stateNamed<State extends Pick<StateRow, "id" | "name" | "categor
   if (exact) return exact;
   const category = Object.entries(CATEGORY_WORDS).find(([key, words]) => key === wanted.replace(/\s+/gu, "_") || words.includes(wanted))?.[0];
   if (category) return active.find((state) => state.category === category) ?? null;
-  const partial = active.filter((state) => toSearchKey(state.name).includes(wanted));
-  return partial.length === 1 ? partial[0] : null;
+  const picked = pickNamedRow(active, name, (state) => [state.name]);
+  return "one" in picked ? picked.one : null;
 }
 
 const proposeTaskChange = defineTool({

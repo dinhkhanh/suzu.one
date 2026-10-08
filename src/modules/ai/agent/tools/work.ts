@@ -14,6 +14,7 @@ import { listApprovals, loadTimeReader } from "@/modules/daily/service";
 import { listRaid, listStatusUpdates, openProject, type PortfolioRow, type ProjectReader } from "@/modules/projects/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { getLeaderView, getTaskDetail, getWorkload, resolveTaskKey } from "@/modules/work/service";
+import { nameGuess, rankNamed } from "../../engine/name-match";
 import { TURN_CEILINGS } from "../../engine/tiers";
 import { modelRows, modelText } from "../../engine/views";
 import { type AnyAgentTool, defineTool } from "../registry";
@@ -70,14 +71,14 @@ const taskDetail = defineTool({
 // ── A project ───────────────────────────────────────────────────────────────────────────────
 
 /** One project by name, number or id among those the asker may open; several = the candidates. */
-async function pickProject(user: Parameters<typeof visiblePortfolio>[0], today: string, query: string): Promise<{ one: PortfolioRow | null; candidates: PortfolioRow[] }> {
+async function pickProject(user: Parameters<typeof visiblePortfolio>[0], today: string, query: string): Promise<{ one: PortfolioRow | null; candidates: PortfolioRow[]; guessed: boolean }> {
   const rows = await visiblePortfolio(user, today, true);
   if (UUID.test(query)) {
     const row = rows.find((candidate) => candidate.id === query) ?? null;
-    return { one: row, candidates: row ? [row] : [] };
+    return { one: row, candidates: row ? [row] : [], guessed: false };
   }
   const found = projectsMatching(rows, query);
-  return { one: found.length === 1 ? found[0] : null, candidates: found.slice(0, 10) };
+  return { one: found.rows.length === 1 ? found.rows[0] : null, candidates: found.rows.slice(0, 10), guessed: found.guessed };
 }
 
 const projectStatus = defineTool({
@@ -93,10 +94,10 @@ const projectStatus = defineTool({
   rowCap: CAP,
   tags: [],
   run: async ({ user, today }, input) => {
-    const { one, candidates } = await pickProject(user, today, input.project);
+    const { one, candidates, guessed } = await pickProject(user, today, input.project);
     if (!one) {
       if (candidates.length === 0) return { outcome: "empty", model: { projects: [], link: "/projects" }, card: null, subject: null };
-      return { outcome: "answered", model: { note: "Several projects match: ask which one.", projects: candidates.map(projectLine) }, card: null, subject: null };
+      return { outcome: "answered", model: { note: "Several projects match: ask which one.", projects: candidates.map(projectLine), ...nameGuess({ guessed }) }, card: null, subject: null };
     }
     // Opened as its page opens it: the module checks again and leaves the private-read trail.
     const opened = await openProject(user as unknown as ProjectReader, one.id);
@@ -118,6 +119,7 @@ const projectStatus = defineTool({
         latestUpdate: latest ? { health: latest.health, summary: modelText(latest.summary), nextSteps: modelText(latest.nextSteps), postedAt: latest.createdAt.toISOString(), by: latest.authorName } : null,
         openRisksAndIssues: modelRows(open, { kind: "value", title: "text", severity: "value", dueDate: "value", ownerName: "text" }, CAP),
         risksLink: `${link}/risks`,
+        ...nameGuess({ guessed }),
       },
       card: { tool: "project_status", href: link, items: [{ label: [one.jobNumber, one.name].filter(Boolean).join(" · "), href: link, meta: one.health ? meta(`health_${one.health}`) : null }], more: 0 },
       subject: { type: "project", id: one.id },
@@ -142,11 +144,9 @@ const portfolioHealth = defineTool({
   rowCap: CAP,
   tags: [],
   run: async ({ user, today }, input) => {
-    const wanted = input.who?.trim().toLowerCase();
-    const rows = (await visiblePortfolio(user, today))
-      .filter((row) => !input.health || (input.health === "stale" ? row.stale : input.health === "none" ? row.health === null : row.health === input.health))
-      .filter((row) => !wanted || [row.teamName, row.clientName, row.leadName].some((name) => (name ?? "").toLowerCase().includes(wanted)))
-      .sort((a, b) => (HEALTH_ORDER[a.health ?? ""] ?? 3) - (HEALTH_ORDER[b.health ?? ""] ?? 3) || (b.dueSlipDays ?? 0) - (a.dueSlipDays ?? 0));
+    const inHealth = (await visiblePortfolio(user, today)).filter((row) => !input.health || (input.health === "stale" ? row.stale : input.health === "none" ? row.health === null : row.health === input.health));
+    const who = input.who?.trim() ? rankNamed(inHealth, input.who, (row) => [row.teamName, row.clientName, row.leadName]) : null;
+    const rows = (who ? who.map((match) => match.row) : inHealth).sort((a, b) => (HEALTH_ORDER[a.health ?? ""] ?? 3) - (HEALTH_ORDER[b.health ?? ""] ?? 3) || (b.dueSlipDays ?? 0) - (a.dueSlipDays ?? 0));
     if (rows.length === 0) return { outcome: "empty", model: { projects: [], link: "/projects" }, card: null, subject: null };
     const shaped = rows.map((row) => ({ ...projectLine(row), stale: row.stale, dueSlipDays: row.dueSlipDays, burnPercent: row.burn.percent, highRisks: row.raid.highRisks, openIssues: row.raid.openIssues }));
     const counts = { total: rows.length, offTrack: rows.filter((row) => row.health === "off_track").length, atRisk: rows.filter((row) => row.health === "at_risk").length, stale: rows.filter((row) => row.stale).length };

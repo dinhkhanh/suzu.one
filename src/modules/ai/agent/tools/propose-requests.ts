@@ -10,7 +10,6 @@
 import "server-only";
 import { z } from "zod";
 import { recordHref } from "@/lib/record-routes";
-import { toSearchKey } from "@/lib/text";
 import { overtimeWarningsFor, submitAttendanceRequestInput, whoApprovesAttendance, windowOf } from "@/modules/attendance/service";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { type LeavePreview, leaveTypesFor, previewLeave, submitLeaveInput, whoApprovesLeave } from "@/modules/leave/service";
@@ -20,6 +19,7 @@ import { HEALTHS, loadStatusFacts, openProject, postStatusUpdateInput, projectFo
 import { canFileRequests, EXPENSE_CLAIM_CODE, fileRequestInput, type FormField, type FormValues, listAvailableTypes, type RequestTypeRow, validateSubmission, visibleFields, whoApprovesRequest } from "@/modules/requests/service";
 import { draftStatusSummary } from "../../drafts";
 import { suggestedHealth } from "../../engine/drafts";
+import { namedRows, pickNamedRow } from "../../engine/name-match";
 import type { ProposalField } from "../../enums";
 import { isUuid, notifyNames, notProposed, pickPerson, propose } from "../propose";
 import { type AnyAgentTool, defineTool, type ToolResult } from "../registry";
@@ -37,19 +37,12 @@ const hours = (minutes: number) => Math.round(minutes / 6) / 10;
 const firstApprovers = (steps: readonly { names: string[] }[]) => notifyNames(steps[0]?.names ?? []);
 
 /**
- * One row of a small list the asker named: its code, its whole name, or — when only one holds them —
- * the words asked for. Pure.
+ * One row of a small list the asker named: its code, its whole name, the words asked for — or, when
+ * nothing holds them, the closest name (a typo, a shortened word, initials). Pure.
  */
 export function pickNamed<Row>(rows: readonly Row[], query: string, words: (row: Row) => readonly (string | null | undefined)[]): { one: Row } | { many: Row[] } | { none: true } {
-  const wanted = toSearchKey(query).trim();
-  if (!wanted) return { none: true };
-  const keys = (row: Row) => words(row).filter((word): word is string => !!word).map((word) => toSearchKey(word).trim());
-  const exact = rows.filter((row) => keys(row).includes(wanted));
-  if (exact.length === 1) return { one: exact[0] };
-  if (exact.length > 1) return { many: exact };
-  const partial = rows.filter((row) => keys(row).some((key) => key.includes(wanted)));
-  if (partial.length === 1) return { one: partial[0] };
-  return partial.length ? { many: partial } : { none: true };
+  const picked = pickNamedRow(rows, query, words);
+  return "one" in picked ? { one: picked.one } : "many" in picked ? { many: picked.many } : picked;
 }
 
 // ── Leave ───────────────────────────────────────────────────────────────────────────────────
@@ -281,7 +274,7 @@ async function answersFor(fields: readonly FormField[], raw: Record<string, Answ
     } else if (field.type === "entity") {
       const ids: string[] = [];
       for (const entry of list) {
-        const hit = isUuid(String(entry)) ? entities.filter((entity) => entity.id === String(entry).trim()) : entities.filter((entity) => [entity.code, entity.shortName, entity.legalName].some((word) => toSearchKey(word) === toSearchKey(String(entry))));
+        const hit = isUuid(String(entry)) ? entities.filter((entity) => entity.id === String(entry).trim()) : namedRows(entities, String(entry), (entity) => [entity.code, entity.shortName, entity.legalName]).rows;
         if (hit.length !== 1) return notProposed("entity_not_found", { field: field.key, entities: entities.map((entity) => ({ code: entity.code, name: entity.shortName })) });
         ids.push(hit[0].id);
       }
@@ -407,7 +400,7 @@ const proposeStatusUpdate = defineTool({
   run: async (context, input) => {
     const { user, today, locale } = context;
     const rows = await visiblePortfolio(user, today);
-    const matching = isUuid(input.project) ? rows.filter((row) => row.id === input.project.trim()) : projectsMatching(rows, input.project);
+    const matching = isUuid(input.project) ? rows.filter((row) => row.id === input.project.trim()) : projectsMatching(rows, input.project).rows;
     if (matching.length === 0) return notProposed("project_not_found");
     if (matching.length > 1) return notProposed("several_projects", { projects: matching.slice(0, 8).map(projectLine), next: "Ask the asker which project." });
     const row = matching[0];

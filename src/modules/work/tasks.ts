@@ -6,6 +6,7 @@ import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { folded } from "@/lib/db/folded";
 import { rowsOf } from "@/lib/db/rows";
 import { notify } from "../platform/notifications/service";
 import { checkProjectWork, type ProjectWorkAction } from "../platform/project-guards/registry";
@@ -1098,6 +1099,27 @@ export async function searchTasks(viewer: WorkViewer, query: string, limit = 12)
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
     .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
     .where(and(eq(schema.task.kind, WORK_KIND), live, matches, await visibleTaskCondition(viewer)))
+    .orderBy(sql`case when ${schema.task.status} in ('todo', 'in_progress') then 0 else 1 end`, desc(schema.task.updatedAt))
+    .limit(limit);
+  return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title, status: row.status, projectName: row.projectName }));
+}
+
+/**
+ * The tasks a loosely typed title might mean (Ask SuZu): any whose title, without its marks, holds
+ * one of `stems` — the first letters of the words asked for, so a typo later in a word still
+ * reaches it. The caller weighs the titles; open and recent work first, `limit` at most.
+ */
+export async function searchTasksLoosely(viewer: WorkViewer, stems: readonly string[], limit = 200): Promise<TaskSearchHit[]> {
+  const wanted = [...new Set(stems.map((stem) => stem.trim()).filter((stem) => stem.length >= 3))].slice(0, 8);
+  if (wanted.length === 0) return [];
+  const title = folded(schema.task.title);
+  const rows = await db()
+    .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, status: schema.task.status, projectName: schema.workProject.name })
+    .from(schema.task)
+    .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
+    .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
+    .where(and(eq(schema.task.kind, WORK_KIND), live, or(...wanted.map((stem) => sql`${title} like ${`%${stem.replace(/[\\%_]/g, (character) => `\\${character}`)}%`}`)), await visibleTaskCondition(viewer)))
     .orderBy(sql`case when ${schema.task.status} in ('todo', 'in_progress') then 0 else 1 end`, desc(schema.task.updatedAt))
     .limit(limit);
   return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title, status: row.status, projectName: row.projectName }));
