@@ -6,7 +6,6 @@
 import "server-only";
 import { z } from "zod";
 import { recordHref } from "@/lib/record-routes";
-import { toSearchKey } from "@/lib/text";
 import {
   addToPlanInput,
   firstReadersOf,
@@ -22,6 +21,7 @@ import {
 import { listPersonNames } from "@/modules/platform/people/service";
 import { countOpenBlockersRaisedBy, type LoadedTask, taskKey } from "@/modules/work/service";
 import { draftEodNotes } from "../../drafts";
+import { pickNamedRow } from "../../engine/name-match";
 import { modelText } from "../../engine/views";
 import type { ProposalField } from "../../enums";
 import { isUuid, notifyNames, notProposed, propose } from "../propose";
@@ -44,14 +44,8 @@ function ownTaskNamed<Row extends OwnTask>(tasks: readonly Row[], ref: string): 
   if (byId) return { one: byId };
   const byKey = tasks.find((task) => task.key.toLowerCase() === wanted.toLowerCase());
   if (byKey) return { one: byKey };
-  const words = toSearchKey(wanted).split(/\s+/u).filter(Boolean);
-  if (words.length === 0) return { none: true };
-  const hits = tasks.filter((task) => {
-    const title = toSearchKey(task.title);
-    return words.every((word) => title.includes(word));
-  });
-  if (hits.length === 1) return { one: hits[0] };
-  return hits.length > 1 ? { many: hits.slice(0, 8) } : { none: true };
+  const picked = pickNamedRow(tasks, wanted, (task) => [task.title]);
+  return "one" in picked ? { one: picked.one } : "many" in picked ? { many: picked.many.slice(0, 8) } : picked;
 }
 
 const ownLine = (task: OwnTask) => `${task.key} · ${task.title}`;

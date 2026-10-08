@@ -10,6 +10,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { z } from "zod";
 import { toSearchKey } from "@/lib/text";
+import { pickNamedRow } from "../engine/name-match";
 import { modelText } from "../engine/views";
 import type { ProposalField } from "../enums";
 import { createProposal } from "../proposals";
@@ -82,15 +83,8 @@ export function pickPerson<Row extends { id: string; fullName: string }>(candida
     const row = candidates.find((candidate) => candidate.id === askerId);
     return row ? { one: row } : { none: true };
   }
-  const words = toSearchKey(wanted).split(/\s+/u).filter(Boolean);
-  if (words.length === 0) return { none: true };
-  const hits = candidates.filter((candidate) => {
-    const own = new Set(toSearchKey(candidate.fullName).split(/\s+/u));
-    return words.every((word) => own.has(word));
-  });
-  if (hits.length === 1) return { one: hits[0] };
-  if (hits.length > 1) return { many: hits.slice(0, 8) };
-  return { none: true };
+  const picked = pickNamedRow(candidates, wanted, (candidate) => [candidate.fullName]);
+  return "one" in picked ? { one: picked.one } : "many" in picked ? { many: picked.many.slice(0, 8) } : picked;
 }
 
 /** At most six names on a card, then "+N". */

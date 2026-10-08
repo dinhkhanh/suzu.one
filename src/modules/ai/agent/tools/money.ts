@@ -22,7 +22,7 @@ import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { canManageCompensation, compensationReach, costReport, costTrend, estimateFromSalaryFile, estimateNet, listEntityOptions, type OfferQuote, payrollReadReach, quoteOffer } from "@/modules/payroll/service";
 import { buildProfitability, canReadProfitability, type DashboardViewer, getDashboard } from "@/modules/reports/service";
-import { toSearchKey } from "@/lib/text";
+import { nameGuess, pickNamedRow } from "../../engine/name-match";
 import { TURN_CEILINGS } from "../../engine/tiers";
 import { modelRows } from "../../engine/views";
 import { type AgentUser, type AnyAgentTool, defineTool, type ToolResult } from "../registry";
@@ -240,8 +240,8 @@ const companyHealth = defineTool({
 async function pricedEntity(principal: Principal, named: string | undefined) {
   const entities = await listEntityOptions(compensationReach(principal));
   if (!named) return { entities, entity: entities.length === 1 ? entities[0] : null };
-  const wanted = toSearchKey(named);
-  return { entities, entity: entities.find((row) => toSearchKey(row.code) === wanted || toSearchKey(row.shortName) === wanted) ?? entities.find((row) => toSearchKey(row.shortName).includes(wanted)) ?? null };
+  const picked = pickNamedRow(entities, named, (row) => [row.code, row.shortName]);
+  return { entities, entity: "one" in picked ? picked.one : null };
 }
 
 const quoteView = (quote: OfferQuote) => ({
@@ -282,10 +282,13 @@ const salaryEstimate = defineTool({
     if (input.mode === "person") {
       if (!input.person) return { outcome: "failed", model: { error: "person_required" }, card: null, subject: null };
       let personId = UUID.test(input.person) ? input.person : null;
+      let guessed = false;
       if (!personId) {
-        const found = await peopleNamed(user.principal, input.person);
+        const named = await peopleNamed(user.principal, input.person);
+        const found = named.rows;
+        guessed = named.guessed;
         if (found.length === 0) return { outcome: "empty", model: { people: [], link: "/payroll/salaries" }, card: null, subject: null };
-        if (found.length > 1) return { outcome: "answered", model: { note: "Several people match: ask which one.", people: found.map((row) => ({ personId: row.id, name: row.fullName, department: row.departmentName })) }, card: null, subject: null };
+        if (found.length > 1) return { outcome: "answered", model: { note: "Several people match: ask which one.", people: found.map((row) => ({ personId: row.id, name: row.fullName, department: row.departmentName })), ...nameGuess(named) }, card: null, subject: null };
         personId = found[0].id;
       }
       const estimate = await estimateFromSalaryFile({ personId: user.person.id, principal: user.principal }, personId, month);
@@ -293,7 +296,7 @@ const salaryEstimate = defineTool({
       const link = `/payroll/salaries/${personId}`;
       return {
         outcome: "answered",
-        model: { link, name: estimate.person.fullName, month, structureInForceFrom: estimate.structureFrom, dependants: estimate.dependents, note: "An ordinary full month on the salary file: no overtime, absence, bonus or one-off item. The payslip will differ when those apply.", ...quoteView(estimate.quote) },
+        model: { link, name: estimate.person.fullName, ...nameGuess({ guessed }), month, structureInForceFrom: estimate.structureFrom, dependants: estimate.dependents, note: "An ordinary full month on the salary file: no overtime, absence, bonus or one-off item. The payslip will differ when those apply.", ...quoteView(estimate.quote) },
         card: { tool: "salary_estimate", href: link, items: [{ label: estimate.person.fullName, href: link, meta: { key: "estimateFor", params: { month } } }], more: 0 },
         subject: { type: "person", id: personId },
       };

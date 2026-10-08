@@ -15,6 +15,7 @@ import { listInstances } from "@/modules/ops/service";
 import { getPayslipView, listMyPayslips } from "@/modules/payroll/service";
 import { listInbox, listMyRequests } from "@/modules/platform/approvals/service";
 import { listMyWorkItems, type MyWorkItem } from "@/modules/work/service";
+import { rankNamed } from "../../engine/name-match";
 import { APPROVER_KINDS, type ApproverKind } from "../../engine/routing";
 import { TURN_CEILINGS } from "../../engine/tiers";
 import { modelRows, modelText } from "../../engine/views";
@@ -54,15 +55,17 @@ const myTasks = defineTool({
   tags: [],
   run: async ({ user, today }, input) => {
     const until = addDays(today, input.dueWithinDays ?? 7);
-    const project = input.project?.trim().toLowerCase();
+    const open = (await listMyWorkItems(user.person.id)).filter((task) => task.status === "todo" || task.status === "in_progress");
+    // The project as the asker typed it, among the projects of their own work: misspelt or shortened too.
+    const projects = input.project?.trim() ? new Set(rankNamed([...new Set(open.map((task) => task.projectName).filter((name): name is string => !!name))], input.project, (name) => [name]).map((match) => match.row)) : null;
     const keep = (task: MyWorkItem) => {
-      if (project && !(task.projectName ?? "").toLowerCase().includes(project)) return false;
+      if (projects && !(task.projectName && projects.has(task.projectName))) return false;
       if (input.filter === "overdue") return task.dueDate !== null && task.dueDate < today;
       if (input.filter === "due_soon") return task.dueDate !== null && task.dueDate >= today && task.dueDate <= until;
       if (input.filter === "blocked") return task.blockedBy > 0 || task.blocker !== null;
       return true;
     };
-    const tasks = (await listMyWorkItems(user.person.id)).filter((task) => task.status === "todo" || task.status === "in_progress").filter(keep);
+    const tasks = open.filter(keep);
     tasks.sort((a, b) => (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") || (a.priority ?? 9) - (b.priority ?? 9));
     if (tasks.length === 0) return nothing("/work", user.person.id, { filter: input.filter ?? "all_open" });
     const shaped = tasks.map((task) => ({ ...task, link: recordHref("task", task.id), blocked: task.blockedBy > 0 || task.blocker !== null }));
