@@ -3,7 +3,7 @@ import { ArrowUpIcon, BookOpenIcon, SparklesIcon } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ import { List, ListItem } from "@/components/ui/list";
 import { cn } from "cn";
 import { askAssistantAction } from "../actions";
 import { citationHref } from "../engine/answer";
-import { type AgentCard, type AgentShown, type ChatTurn as Turn, QUESTION_MAX, type ToolOutcome } from "../enums";
+import { type AgentCard, type AgentShown, type ChatTurn as Turn, type PageContext, QUESTION_MAX, type ToolOutcome } from "../enums";
+import { AnswerFeedback } from "./answer-feedback";
 import { AnswerMarkdown } from "./answer-markdown";
 import { ProposalCard } from "./proposal-card";
 
@@ -161,33 +162,23 @@ function AgentCards({ cards }: { cards: AgentCard[] }) {
   );
 }
 
-function Bubble({ turn }: { turn: Turn }) {
+/** What the assistant said, without the đúng / sai under it. */
+function AnswerBody({ turn }: { turn: Turn }) {
   const t = useTranslations("assistant");
-  if (turn.role === "user")
-    return <li className="max-w-[85%] self-end rounded-[16px_16px_4px_16px] bg-ink px-4 py-3 text-sm leading-relaxed text-ink-foreground md:max-w-[75%]">{turn.body}</li>;
-  if (turn.tool)
-    return (
-      <AnswerRow>
-        <ToolAnswer tool={turn.tool} />
-      </AnswerRow>
-    );
+  if (turn.tool) return <ToolAnswer tool={turn.tool} />;
   // The agent declined: the app's sentence, never the model's (FR-AGT-03).
   if (turn.outcome === "off_topic")
-    return (
-      <AnswerRow>
-        <p className="text-muted-foreground">{turn.agent?.offTopic === "greeting" ? t("agent.greeting") : t("agent.offTopic")}</p>
-      </AnswerRow>
-    );
+    return <p className="text-muted-foreground">{turn.agent?.offTopic === "greeting" ? t("agent.greeting") : t("agent.offTopic")}</p>;
   // An answer that read pay is shown once and not kept (D36).
   if (turn.agent?.unstored && !turn.body)
     return (
-      <AnswerRow>
+      <>
         <p className="text-muted-foreground">{t("agent.unstored")}</p>
         <Steps agent={turn.agent} />
-      </AnswerRow>
+      </>
     );
   return (
-    <AnswerRow>
+    <>
       {turn.outcome === "unanswered" || (turn.outcome === "limited" && !turn.body) ? (
         <div className="text-muted-foreground">
           <p>{t("noAnswer")}</p>
@@ -210,37 +201,82 @@ function Bubble({ turn }: { turn: Turn }) {
           {turn.body ? <p className="text-xs text-faint">{t("mayBeWrong")}</p> : null}
         </>
       )}
+    </>
+  );
+}
+
+function Bubble({ turn, feedback }: { turn: Turn; feedback: boolean }) {
+  if (turn.role === "user")
+    return <li className="max-w-[85%] self-end rounded-[16px_16px_4px_16px] bg-ink px-4 py-3 text-sm leading-relaxed text-ink-foreground md:max-w-[75%]">{turn.body}</li>;
+  return (
+    <AnswerRow>
+      <AnswerBody turn={turn} />
+      {/* Đúng / sai on every answer that is stored (FR-AGT-51). */}
+      {feedback ? <AnswerFeedback messageId={turn.id} given={turn.feedback ?? null} /> : null}
     </AnswerRow>
   );
 }
 
-export function AssistantChat({ conversationId, turns, suggestions }: { conversationId: string | null; turns: Turn[]; suggestions: string[] }) {
+/** How a question reaches the `ai.ask` action: as a server action on `/assistant`, through its own route from the sheet. */
+export type AskTransport = (input: unknown) => Promise<Awaited<ReturnType<typeof askAssistantAction>>>;
+
+export function AssistantChat({
+  conversationId,
+  turns,
+  suggestions,
+  ask = askAssistantAction,
+  page = null,
+  variant = "page",
+  onConversation,
+}: {
+  conversationId: string | null;
+  turns: Turn[];
+  suggestions: string[];
+  ask?: AskTransport;
+  /** The record on screen, from the sheet (FR-AGT-02). */
+  page?: PageContext | null;
+  /** "sheet": inside the assistant's sheet over another page — no history beside it to refresh, the composer at the sheet's foot. */
+  variant?: "page" | "sheet";
+  onConversation?: (conversationId: string) => void;
+}) {
   const t = useTranslations("assistant");
   const locale = useLocale();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const asked = useRef("");
+  // The same question, for the screen while it is being answered.
+  const [asking, setAsking] = useState("");
   const [shown, setShown] = useState<Turn[]>(turns);
   const [conversation, setConversation] = useState(conversationId);
+  const sheet = variant === "sheet";
+  const threadRef = useRef<HTMLDivElement>(null);
 
-  const form = useActionForm(askAssistantAction, {
-    extra: { conversationId: conversation, locale },
+  const form = useActionForm(ask, {
+    extra: { conversationId: conversation, locale, page },
     onSuccess: (result) => {
       setConversation(result.conversationId);
+      onConversation?.(result.conversationId);
       setShown((before) => [
         ...before,
         { id: `${result.messageId}-q`, role: "user", body: asked.current, outcome: null, citations: [], tool: null },
         { id: result.messageId, role: "assistant", body: result.body, outcome: result.outcome, citations: result.citations, tool: result.tool, agent: result.agent, notice: result.notice },
       ]);
       formRef.current?.reset();
-      router.refresh();
+      // The history beside the thread lists this conversation now. The sheet has none.
+      if (variant === "page") router.refresh();
     },
   });
+
+  // In the sheet the thread scrolls on its own: each new turn is brought into view.
+  useEffect(() => {
+    if (sheet) threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
+  }, [sheet, shown.length, form.pending]);
 
   // The question is echoed from what was typed, so it has to be read before the form resets.
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     asked.current = inputRef.current?.value.trim() ?? "";
+    setAsking(asked.current);
     form.onSubmit(event);
   }
 
@@ -263,11 +299,12 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
   );
 
   return (
-    <div className="flex min-h-[60vh] min-w-0 flex-col gap-5">
-      {/* The padding keeps the thread's last line clear of the composer's fade when scrolled to the end. */}
-      <div className="flex min-w-0 flex-1 flex-col gap-5 pb-7">
-        {shown.length === 0 ? (
-          <div className="flex flex-col gap-4 py-4 md:py-8">
+    <div className={cn("flex min-w-0 flex-col", sheet ? "min-h-0 flex-1 gap-3" : "min-h-[60vh] gap-5")}>
+      {/* The padding keeps the thread's last line clear of the composer's fade when scrolled to the end.
+          In the sheet the thread scrolls by itself, above a composer that stays at the sheet's foot. */}
+      <div ref={threadRef} className={cn("flex min-w-0 flex-1 flex-col gap-5", sheet ? "min-h-0 overflow-y-auto overscroll-contain pb-2" : "pb-7")}>
+        {shown.length === 0 && !form.pending ? (
+          <div className={cn("flex flex-col gap-4", sheet ? "py-2" : "py-4 md:py-8")}>
             <Spark />
             <p className="max-w-prose text-sm text-muted-foreground">{t("emptyHint")}</p>
             {chips}
@@ -276,11 +313,13 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
           <>
             <ol className="flex flex-col gap-5">
               {shown.map((turn) => (
-                <Bubble key={turn.id} turn={turn} />
+                <Bubble key={turn.id} turn={turn} feedback={turn.role === "assistant"} />
               ))}
+              {/* The question is on screen the moment it is sent, before any answer (NFR-AGT-01). */}
+              {form.pending && asking ? <Bubble turn={{ id: "pending", role: "user", body: asking, outcome: null, citations: [], tool: null }} feedback={false} /> : null}
             </ol>
             {form.pending ? (
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-3 text-sm text-muted-foreground" role="status">
                 <Spark />
                 <span className="animate-pulse">{t("thinking")}</span>
               </div>
@@ -295,22 +334,22 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
           It sticks to the edge of `<main>`'s content, which that element's bottom padding already
           holds off the screen's edge: on a phone the padding clears the tab bar, and half a rem
           back into it sets the pill beside the quick-add button. */}
-      <form ref={formRef} onSubmit={onSubmit} className="sticky -bottom-2 z-10 mr-16 flex flex-col gap-2 md:bottom-4 md:mr-0">
+      <form ref={formRef} onSubmit={onSubmit} className={cn("z-10 flex flex-col gap-2", sheet ? "shrink-0" : "sticky -bottom-2 mr-16 md:bottom-4 md:mr-0")}>
         {/* The ground under the composer: the thread fades out as it reaches the box and is gone below it — down to the tab bar on a phone, to the edge of the page on a desk. */}
-        <div aria-hidden className="pointer-events-none absolute -top-12 -right-16 -bottom-6 left-0 -z-10 bg-[linear-gradient(to_top,var(--background)_calc(100%-3rem),transparent)] md:right-0 md:-bottom-16" />
-        <label htmlFor="question" className="sr-only">
+        {sheet ? null : <div aria-hidden className="pointer-events-none absolute -top-12 -right-16 -bottom-6 left-0 -z-10 bg-[linear-gradient(to_top,var(--background)_calc(100%-3rem),transparent)] md:right-0 md:-bottom-16" />}
+        <label htmlFor={sheet ? "sheet-question" : "question"} className="sr-only">
           {t("askLabel")}
         </label>
-        <div className={cn("flex items-end gap-2 border border-border bg-background shadow-[0_8px_24px_oklch(0_0_0/6%)]", "rounded-[24px] px-2 py-1.5 pl-4 md:rounded-[16px] md:p-3 md:pl-4")}>
+        <div className={cn("flex items-end gap-2 border border-border bg-background", sheet ? "rounded-[16px] px-2 py-1.5 pl-3" : "rounded-[24px] px-2 py-1.5 pl-4 shadow-[0_8px_24px_oklch(0_0_0/6%)] md:rounded-[16px] md:p-3 md:pl-4")}>
           <textarea
             ref={inputRef}
-            id="question"
+            id={sheet ? "sheet-question" : "question"}
             name="question"
             required
             rows={1}
             maxLength={QUESTION_MAX}
             placeholder={t("placeholder")}
-            className="max-h-40 min-h-[2.25rem] w-full flex-1 resize-none self-center bg-transparent py-2 text-sm leading-5 outline-none [field-sizing:content] placeholder:text-faint md:min-h-[3rem]"
+            className={cn("max-h-40 min-h-[2.25rem] w-full flex-1 resize-none self-center bg-transparent py-2 text-sm leading-5 outline-none [field-sizing:content] placeholder:text-faint", !sheet && "md:min-h-[3rem]")}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
@@ -323,7 +362,7 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
           </Button>
         </div>
         <FormError namespace="assistant.errors" errorKey={form.errorKey} />
-        <p className="hidden px-1 text-xs text-faint md:block">{t("mayBeWrong")}</p>
+        {sheet ? null : <p className="hidden px-1 text-xs text-faint md:block">{t("mayBeWrong")}</p>}
       </form>
     </div>
   );

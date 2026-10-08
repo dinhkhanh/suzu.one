@@ -11625,7 +11625,48 @@
       "noCostPerHire": "Cost per hire is not shown: the system does not record recruitment spend."
     }
   },
+  "assistantSheet": {
+    "button": "Ask SuZu",
+    "hint": "Ask the assistant about this page, or have it do something for you",
+    "title": "Ask SuZu",
+    "loading": "Opening the assistant…",
+    "failed": "The assistant could not open. Reload the page and try again."
+  },
   "assistant": {
+    "feedback": {
+      "right": "Right",
+      "wrong": "Wrong",
+      "noteRight": "What helped? (optional)",
+      "noteWrong": "What was wrong? (optional)",
+      "placeholder": "E.g. the leave balance does not match the Leave page",
+      "share": "Share this question and answer with the people who look after the assistant. Unticked, they see only right / wrong and your note.",
+      "send": "Send",
+      "cancel": "Cancel",
+      "thanks": "Thank you — noted."
+    },
+    "sheet": {
+      "context": {
+        "task": "On: this task — ask about “this task” and SuZu knows which.",
+        "project": "On: this project — ask about “this project” and SuZu knows which.",
+        "person": "On: this person's profile — ask about “this person” and SuZu knows who."
+      },
+      "noContext": "Ask about work, policies, or have SuZu do something for you.",
+      "full": "Open full page",
+      "suggest": {
+        "task": {
+          "first": "How is this task going?",
+          "second": "Log 1 hour on this task today"
+        },
+        "project": {
+          "first": "How is this project going?",
+          "second": "Which risks are open on this project?"
+        },
+        "person": {
+          "first": "Give me an overview of this person",
+          "second": "What is this person working on?"
+        }
+      }
+    },
     "title": "Ask SuZu",
     "intro": "Answers from the knowledge-base pages you may read, with a link to the source. Only pages you can open are ever used.",
     "askLabel": "Your question",
@@ -11902,6 +11943,17 @@
       "approver": "Who approves my leave request?"
     },
     "unanswered": {
+      "feedback": {
+        "tab": "Feedback",
+        "title": "Feedback on answers",
+        "intro": "Right / wrong as people marked the assistant's answers, with their notes. The question and the answer are shown only when the asker chose to share them; who gave the feedback is not shown.",
+        "right": "Right",
+        "wrong": "Wrong",
+        "empty": "No feedback yet.",
+        "noNote": "No note.",
+        "tools": "Looked at: {tools}",
+        "notShared": "The asker did not share the question and the answer."
+      },
       "link": "Unanswered questions",
       "back": "Ask SuZu",
       "title": "Unanswered questions",
@@ -11952,7 +12004,9 @@
       "ai_conversation_not_found": "That conversation was not found.",
       "ai_unanswered_not_found": "That question has already been dealt with.",
       "ai_limit_day": "You have reached today's limit of questions. Ask again tomorrow.",
-      "ai_limit_burst": "That is a lot of questions at once. Wait a minute, then ask again."
+      "ai_limit_burst": "That is a lot of questions at once. Wait a minute, then ask again.",
+      "ai_message_not_found": "That answer was not found.",
+      "offline": "Could not connect. Check the network and try again."
     },
     "tools": {
       "fromYourRecord": "These figures come from your own record, not from a knowledge-base page. Open the screen to see the detail.",
@@ -14325,7 +14379,7 @@
     "privacy": {
       "title": "Privacy Policy",
       "description": "How SuZu Group collects, uses, shares and protects personal data in SuZu One.",
-      "updated": "Last updated: 30 September 2026",
+      "updated": "Last updated: 7 October 2026",
       "intro": [
         "This Privacy Policy explains how Công ty Cổ phần SuZu Group (\"SuZu Group\", \"we\", \"us\") collects, uses, shares and protects personal data in SuZu One, the internal operations platform available at https://suzu.one (the \"Service\").",
         "SuZu One is an internal tool. It is available only to employees, collaborators and other personnel of SuZu Group and its affiliated companies who have been given a company Google Workspace account on suzu.vn or suzu.group. It is not offered to the public. The public careers pages at https://suzu.one/careers are covered by the privacy notice shown on the application form."
@@ -14392,7 +14446,8 @@
           "list": [
             "to run the company's HR processes: employee records, attendance, leave, payroll, statutory social insurance and personal income tax, recruitment and performance;",
             "to organise and track work: tasks, projects, requests and approvals;",
-            "to share internal knowledge and announcements, and to answer questions from the company knowledge base;",
+            "to share internal knowledge and announcements;",
+            "the Ask SuZu assistant: to answer questions from the company knowledge base and from the data in the Service that the person asking may see themselves — which can include employees' personal data, pay included where the person asking may see it — and to prepare changes that are made only when the person asking presses Confirm;",
             "to send you notifications about your work, by email, browser notification or Google Chat;",
             "to keep the Service secure: authentication, access control, audit logging and preventing misuse;",
             "to keep the Service working: monitoring errors and fixing faults;",
@@ -14433,7 +14488,7 @@
             "Resend — delivery of emails the Service sends;",
             "Functional Software Inc. (Sentry) — error monitoring;",
             "Google LLC — Google Workspace sign-in, and Google Chat and Google Calendar notifications and meetings where the company has enabled them;",
-            "Anthropic PBC — the assistant, where the company has enabled it; it receives the question asked and the knowledge base content needed to answer it."
+            "Anthropic PBC — the Ask SuZu assistant, where the company has enabled it. It receives the question asked, the knowledge base content and the part of the data in the Service needed to answer it that the person asking may see — which can include employees' personal data, pay included where the person asking may see it and has just re-confirmed their identity. Phone numbers, email addresses, identity document numbers and bank accounts are not sent. Anthropic processes the data under its commercial terms and keeps it for its standard retention period — the company does not use zero data retention — and does not use it to train models."
           ],
           "after": [
             "We also disclose personal data where the law requires it — for example to the tax authority, the social insurance agency, or banks paying salaries — and, if SuZu Group or a group company is reorganised, merged or sold, to the successor, under the same protections."
@@ -14452,7 +14507,8 @@
             "Employment, attendance and leave records: for the duration of your employment and afterwards for as long as labour and social insurance law requires.",
             "Payroll, tax and accounting records: for the periods required by Vietnamese tax and accounting law (up to ten years).",
             "Audit logs: for as long as needed for security and to demonstrate compliance.",
-            "Sessions: seven days from the last activity. Error reports: a limited period, after which they are deleted automatically."
+            "Sessions: seven days from the last activity. Error reports: a limited period, after which they are deleted automatically.",
+            "Conversations with the Ask SuZu assistant, with the right / wrong feedback you give: 180 days from the conversation's last use, or until you delete it. An answer that holds pay figures is shown once and not kept."
           ],
           "after": [
             "When a retention period ends, we delete the data or make it anonymous."
@@ -14565,7 +14621,7 @@
         {
           "heading": "7. Assistant and automated features",
           "body": [
-            "The assistant and other automated features answer from the company's knowledge base and may be incomplete or wrong. Check important answers against the source documents, and do not rely on them alone for legal, financial or HR decisions."
+            "The assistant and other automated features answer from the company's knowledge base and the data you may see, and may be incomplete or wrong. Check important answers against the source documents or the screens they link to, and do not rely on them alone for legal, financial or HR decisions. The assistant changes nothing by itself: a change it prepares is made only when you press Confirm, as if you had made it yourself, so read every field before confirming."
           ]
         },
         {

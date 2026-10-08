@@ -10,7 +10,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { SEGMENT_NAMESPACES, SHELL_NAMESPACES } from "@/i18n/route-namespaces.generated";
+import { LAZY_NAMESPACES, SEGMENT_NAMESPACES, SHELL_NAMESPACES } from "@/i18n/route-namespaces.generated";
 import { mergeMessages, pickMessages } from "@/i18n/surfaces";
 import { appSegments, computeRouteNamespaces, GENERATED_PATH, renderGenerated } from "../scripts/i18n-route-namespaces";
 import catalogue from "../messages/vi.json";
@@ -48,6 +48,14 @@ describe("the namespaces each part of the app sends", () => {
   it("keep the shell's words in the shell: the theme switch and the selects", () => {
     expect(covers(SHELL_NAMESPACES, "theme")).toBe(true);
     expect(covers(SHELL_NAMESPACES, "controls")).toBe(true);
+  });
+
+  it("leave a lazy surface's words out of the shell: the assistant's sheet fetches its own when it opens", () => {
+    // The button is in the shell; the chat behind it, loaded with import(), is not.
+    expect(covers(SHELL_NAMESPACES, "assistantSheet")).toBe(true);
+    expect(covers(SHELL_NAMESPACES, "assistant")).toBe(false);
+    expect(covers(LAZY_NAMESPACES.assistantSheet, "assistant.agent.proposal")).toBe(true);
+    expect(covers(LAZY_NAMESPACES.assistantSheet, "assistant.feedback")).toBe(true);
   });
 
   it("are a fraction of the catalogue on every page", () => {

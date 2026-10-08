@@ -25,9 +25,10 @@ import { allowedAppLinks, appLinksFor } from "./engine/app-links";
 import { NO_USAGE, type TokenUsage } from "./engine/limits";
 import { asksToAct, routeQuestion } from "./engine/routing";
 import type { AgentShown, AiNotice, AnswerOutcome, ChatTurn, ToolOutcome } from "./enums";
-import { QUESTION_MAX } from "./enums";
+import { type PageContext, QUESTION_MAX } from "./enums";
 import { chatDriver, localChatDriver } from "./model";
 import { agentAudienceAdmits } from "./policy";
+import { feedbackIn } from "./feedback";
 import { linkProposals, proposalStatesIn } from "./proposals";
 import { retrievePassages } from "./retrieval";
 import { runTool, type ToolAudit } from "./tools";
@@ -36,7 +37,7 @@ const { aiConversation, aiMessage, aiUnansweredQuestion } = schema;
 
 const TITLE_MAX = 120;
 
-export type AskInput = { question: string; conversationId?: string | null; locale?: string };
+export type AskInput = { question: string; conversationId?: string | null; locale?: string; /** The record on screen, from the sheet (FR-AGT-02). */ page?: PageContext | null };
 
 export type Answer = {
   body: string;
@@ -86,7 +87,7 @@ export async function answerQuestion(user: ViewerSource, question: string, local
  *
  * Still writes nothing, so the evaluation set can measure exactly what a person gets.
  */
-export async function resolveAnswer(user: AgentUser, question: string, locale: string, options: { agent?: AgentDriver | null; history?: readonly HistoryMessage[] } = {}): Promise<Resolved> {
+export async function resolveAnswer(user: AgentUser, question: string, locale: string, options: { agent?: AgentDriver | null; history?: readonly HistoryMessage[]; page?: PageContext | null } = {}): Promise<Resolved> {
   const today = todayInVietnam();
   const route = routeQuestion(question, today);
   // D33: a question about somebody else is the agent's, whose tools ask each module what the asker
@@ -100,7 +101,7 @@ export async function resolveAnswer(user: AgentUser, question: string, locale: s
     return { kind: "tool", tool: outcome, audit, outcome: outcome.status === "answered" ? "answered" : "refused" };
   }
   if (options.agent) {
-    const turn = await runAgentTurn({ user, question, locale: locale === "en" ? "en" : "vi", today, history: options.history ?? [], driver: options.agent, acting: asksToAct(question) });
+    const turn = await runAgentTurn({ user, question, locale: locale === "en" ? "en" : "vi", today, history: options.history ?? [], driver: options.agent, acting: asksToAct(question), othersPay: route?.tool === "payslip_explain" && route.subject === "other", page: options.page ?? null });
     if (turn.kind === "answered") return { kind: "agent", turn, outcome: "answered" };
     if (turn.kind === "off_topic") return { kind: "agent", turn, outcome: "off_topic" };
     // The free path: a quoted passage, with the reason the chat gives for it.
@@ -204,7 +205,7 @@ export async function ask(user: AgentUser & { email?: string | null }, input: As
 
   const agent = options.agent === undefined ? agentFor(user) : options.agent;
   const history = agent && input.conversationId ? await historyOf(personId, input.conversationId) : [];
-  const resolved = await resolveAnswer(user, question, locale, { agent, history });
+  const resolved = await resolveAnswer(user, question, locale, { agent, history, page: input.page ?? null });
   const turn = resolved.kind === "agent" ? resolved.turn : resolved.kind === "kb" ? (resolved.agentTurn ?? null) : null;
   const tool = resolved.kind === "tool" ? resolved.tool : null;
   const citations = resolved.kind === "kb" ? resolved.answer.citations : resolved.kind === "agent" && resolved.turn.kind === "answered" ? resolved.turn.citations : [];
@@ -260,16 +261,17 @@ export async function listConversations(personId: string, limit = 20): Promise<{
 /** The turns of one conversation — the asker's own, or nothing. */
 export async function getConversation(personId: string, conversationId: string): Promise<{ id: string; title: string; turns: ConversationTurn[] } | null> {
   // All at once; the messages and the proposals are only returned when the conversation is the asker's.
-  const [[row], messages, proposals] = await Promise.all([
+  const [[row], messages, proposals, feedback] = await Promise.all([
     db().select().from(aiConversation).where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId))).limit(1),
     db().select().from(aiMessage).where(eq(aiMessage.conversationId, conversationId)).orderBy(asc(aiMessage.createdAt)),
     proposalStatesIn(personId, conversationId),
+    feedbackIn(personId, conversationId),
   ]);
   if (!row) return null;
   // A card shows its proposal as it stands now, not as it was proposed: confirmed a minute ago, the buttons are gone.
   const live = (turn: ConversationTurn): ConversationTurn =>
     turn.agent && turn.agent.cards.some((card) => card.proposal) ? { ...turn, agent: { ...turn.agent, cards: turn.agent.cards.map((card) => (card.proposal ? { ...card, proposal: { ...card.proposal, ...(proposals.get(card.proposal.id) ?? { state: "expired" as const }) } } : card)) } } : turn;
-  return { id: row.id, title: row.title, turns: messages.map(toTurn).map(live) };
+  return { id: row.id, title: row.title, turns: messages.map(toTurn).map(live).map((turn) => (feedback.has(turn.id) ? { ...turn, feedback: feedback.get(turn.id) } : turn)) };
 }
 
 export async function deleteConversation(personId: string, conversationId: string): Promise<boolean> {
@@ -284,7 +286,7 @@ export type UnansweredRow = { id: string; question: string; locale: string; best
  * by the asker's entity or unit, in SQL, before anything is grouped or counted. A keeper of one
  * entity's knowledge base does not read what the next entity's people asked. Null = nobody.
  */
-function askersInReach(reader: Principal): SQL | undefined | null {
+export function askersInReach(reader: Principal): SQL | undefined | null {
   const reach = permissionReach(reader, "kb:manage");
   if (reach.all) return undefined;
   if (reachesNothing(reach)) return null;

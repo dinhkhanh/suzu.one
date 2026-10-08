@@ -47,3 +47,25 @@ export const RECORD_KINDS = Object.keys(ROUTES) as RecordKind[];
 export function recordHref(kind: RecordKind, id: string): string {
   return ROUTES[kind](id);
 }
+
+const UUID_AT = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/iu;
+/** Each kind's page as a prefix ("/projects/"), longest first, so "/assets/digital/…" is not read as an asset. */
+const PREFIXES = (Object.entries(ROUTES) as [RecordKind, (id: string) => string][])
+  .map(([kind, route]) => [kind, route("\u0000")] as const)
+  .filter(([, href]) => href.endsWith("/\u0000"))
+  .map(([kind, href]) => [kind, href.slice(0, -1)] as const)
+  .sort((a, b) => b[1].length - a[1].length);
+
+/**
+ * The record a path is the page of — `/projects/<id>/risks` is project <id> — or null. The reverse
+ * of `recordHref`, for the assistant's sheet (FR-AGT-02): it says what is on screen, and the tool
+ * that is given the id checks it again like any other.
+ */
+export function recordAt(pathname: string): { kind: RecordKind; id: string } | null {
+  for (const [kind, prefix] of PREFIXES) {
+    if (!pathname.startsWith(prefix)) continue;
+    const match = UUID_AT.exec(pathname.slice(prefix.length));
+    if (match) return { kind, id: match[1].toLowerCase() };
+  }
+  return null;
+}

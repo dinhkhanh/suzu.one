@@ -51,6 +51,8 @@ function resolveImport(from: string, specifier: string): string | null {
 type Parsed = {
   directive: "client" | "server" | null;
   imports: string[];
+  /** `import("…")` — how `next/dynamic` loads — kept apart: a lazy surface is reached only this way. */
+  dynamicImports: string[];
   /** What a `useTranslations` here is bound to. */
   bound: string[];
   /** Literals given to something called a namespace (a prop, a property, a variable). */
@@ -80,7 +82,7 @@ function parse(file: string): Parsed {
     if (statement.expression.text === "use client") directive = "client";
     if (statement.expression.text === "use server") directive = "server";
   }
-  const parsed: Parsed = { directive, imports: [], bound: [], named: [], unresolved: [] };
+  const parsed: Parsed = { directive, imports: [], dynamicImports: [], bound: [], named: [], unresolved: [] };
   const constants = new Map<string, string>();
   const translatorArgs: ts.Expression[] = [];
   const where = (node: ts.Node) => `${relative(ROOT, file)}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
@@ -91,7 +93,7 @@ function parse(file: string): Parsed {
       const typeOnly = ts.isImportDeclaration(node) ? node.importClause?.isTypeOnly : node.isTypeOnly;
       if (!typeOnly) parsed.imports.push(node.moduleSpecifier.text);
     } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) {
-      parsed.imports.push(node.arguments[0].text);
+      parsed.dynamicImports.push(node.arguments[0].text);
     } else if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useTranslations") {
       if (node.arguments[0]) translatorArgs.push(node.arguments[0]);
       else parsed.unresolved.push(`${where(node)} useTranslations() with no namespace`);
@@ -139,6 +141,17 @@ function namespaceOf(literal: string, catalogue: Catalogue): string | null {
 
 type Why = (namespace: string, file: string, literal: string) => void;
 
+/**
+ * Client code the shell loads only when somebody opens it, with `import()`, and whose words are
+ * fetched then rather than sent with every page: the assistant's sheet (Phase 13 R5) needs the whole
+ * `assistant` namespace, which no page should carry for a button most people press now and then.
+ * The shell does not follow an `import()` of one of these files; its namespaces are worked out on
+ * their own (`LAZY_NAMESPACES`) and served by the surface's own route. A static import of the file
+ * is still followed, so a careless one costs bytes, never a missing word.
+ */
+export const LAZY_SURFACES = { assistantSheet: "src/modules/ai/ui/agent-sheet-body.tsx" } as const;
+const LAZY_FILES = new Set(Object.values(LAZY_SURFACES).map((path) => join(ROOT, path)));
+
 /** The namespaces client code reachable from `entries` binds a translator to; what cannot be read goes to `unresolved`. */
 function namespacesFrom(entries: readonly string[], catalogue: Catalogue, unresolved: Set<string>, why?: Why): Set<string> {
   const found = new Set<string>();
@@ -167,6 +180,11 @@ function namespacesFrom(entries: readonly string[], catalogue: Catalogue, unreso
       const target = resolveImport(file, specifier);
       if (target) stack.push({ file: target, client });
     }
+    // A lazy surface loaded with `import()` brings its own words when it opens (`LAZY_SURFACES`).
+    for (const specifier of parsed.dynamicImports) {
+      const target = resolveImport(file, specifier);
+      if (target && !LAZY_FILES.has(target)) stack.push({ file: target, client });
+    }
   }
   return found;
 }
@@ -194,7 +212,7 @@ export function appSegments(): string[] {
     .sort();
 }
 
-export type RouteNamespaces = { shell: string[]; segments: Record<string, string[]>; unresolved: string[] };
+export type RouteNamespaces = { shell: string[]; segments: Record<string, string[]>; lazy: Record<string, string[]>; unresolved: string[] };
 
 /** `why` hears every literal that brought a namespace in, and from which file. */
 export function computeRouteNamespaces(why?: (where: string, namespace: string, file: string, literal: string) => void): RouteNamespaces {
@@ -209,10 +227,14 @@ export function computeRouteNamespaces(why?: (where: string, namespace: string, 
     // What the shell already carries is not sent twice.
     segments[segment] = minimal(namespacesFrom(filesUnder(join(APP, segment)), catalogue, unresolved, why && ((...args) => why(segment, ...args)))).filter((namespace) => !covered(namespace));
   }
-  return { shell, segments, unresolved: [...unresolved].sort() };
+  const lazy: Record<string, string[]> = {};
+  for (const [surface, path] of Object.entries(LAZY_SURFACES)) {
+    lazy[surface] = minimal(namespacesFrom([join(ROOT, path)], catalogue, unresolved, why && ((...args) => why(surface, ...args)))).filter((namespace) => !covered(namespace));
+  }
+  return { shell, segments, lazy, unresolved: [...unresolved].sort() };
 }
 
-export function renderGenerated({ shell, segments }: RouteNamespaces): string {
+export function renderGenerated({ shell, segments, lazy }: RouteNamespaces): string {
   const list = (items: readonly string[]) => `[${items.map((item) => JSON.stringify(item)).join(", ")}]`;
   return [
     "// Generated by `pnpm i18n:routes` (scripts/i18n-route-namespaces.ts) — do not edit by hand.",
@@ -225,6 +247,11 @@ export function renderGenerated({ shell, segments }: RouteNamespaces): string {
     "} as const satisfies Record<string, readonly string[]>;",
     "",
     "export type AppSegment = keyof typeof SEGMENT_NAMESPACES;",
+    "",
+    "// What a surface the shell loads on demand fetches when it opens (LAZY_SURFACES in the script).",
+    "export const LAZY_NAMESPACES = {",
+    ...Object.entries(lazy).map(([surface, namespaces]) => `  ${surface}: ${list(namespaces)},`),
+    "} as const satisfies Record<string, readonly string[]>;",
     "",
   ].join("\n");
 }

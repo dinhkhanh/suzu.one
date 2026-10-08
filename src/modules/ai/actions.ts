@@ -4,7 +4,8 @@ import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { recordAudit, recordAudits } from "@/modules/platform/audit/service";
 import { ask, deleteConversation, resolveUnanswered } from "./conversations";
-import { QUESTION_MAX } from "./enums";
+import { FEEDBACK_NOTE_MAX, FEEDBACK_VERDICTS, PAGE_KINDS, QUESTION_MAX } from "./enums";
+import { giveFeedback } from "./feedback";
 import { admitAiUse } from "./limits";
 import { canAskAssistant, canReadUnansweredLog } from "./policy";
 
@@ -27,6 +28,9 @@ const askPipeline = createAction({
     question: z.string().trim().min(2).max(QUESTION_MAX),
     conversationId: z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? null : value), z.uuid().nullable().default(null)),
     locale: z.enum(["vi", "en"]).default("vi"),
+    // The record on screen when asked from the sheet (FR-AGT-02): a kind and an id, nothing the
+    // model reads as an instruction. The tool given the id checks it like any other.
+    page: z.object({ kind: z.enum(PAGE_KINDS), id: z.uuid() }).nullable().default(null),
   }),
   authorize: (user) => canAskAssistant(user.principal),
   run: async ({ user, input }) => {
@@ -76,7 +80,7 @@ const askPipeline = createAction({
       audit: {
         resource: { type: "ai_message", id: result.messageId },
         summary: input.question.slice(0, 300),
-        after: { outcome: result.outcome, score: result.score, driver: result.driver, model: result.model, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, tool: toolCall?.tool ?? null, agentTools: agentCalls.map((call) => call.tool), citedPageIds: result.citations.map((citation) => citation.pageId) },
+        after: { outcome: result.outcome, score: result.score, driver: result.driver, model: result.model, inputTokens: result.usage.inputTokens, outputTokens: result.usage.outputTokens, tool: toolCall?.tool ?? null, agentTools: agentCalls.map((call) => call.tool), citedPageIds: result.citations.map((citation) => citation.pageId), page: input.page },
       },
     };
   },
@@ -117,4 +121,27 @@ const resolvePipeline = createAction({
 
 export async function resolveUnansweredAction(input: unknown) {
   return resolvePipeline(input);
+}
+
+const feedbackPipeline = createAction({
+  name: "ai.feedback.give",
+  input: z.object({
+    messageId: z.uuid(),
+    verdict: z.enum(FEEDBACK_VERDICTS),
+    note: z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? null : value), z.string().trim().max(FEEDBACK_NOTE_MAX).nullable().default(null)),
+    // A checkbox: "on" when ticked, absent when not.
+    shared: z.preprocess((value) => value === true || value === "on" || value === "true" || value === "1", z.boolean()),
+  }),
+  // On an answer of the asker's own: `giveFeedback` writes nothing for anybody else's message.
+  authorize: (user) => canAskAssistant(user.principal),
+  run: async ({ user, input }) => {
+    const given = await giveFeedback(user.person.id, input);
+    if (!given) throw new ActionError("ai_message_not_found");
+    // The audit says what was said of which answer; the note is kept where the keepers read it.
+    return { data: { verdict: input.verdict }, audit: { resource: { type: "ai_message", id: input.messageId }, summary: input.verdict, after: { verdict: input.verdict, shared: input.shared, note: input.note !== null } } };
+  },
+});
+
+export async function giveFeedbackAction(input: unknown) {
+  return feedbackPipeline(input);
 }

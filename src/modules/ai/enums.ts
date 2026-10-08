@@ -11,6 +11,13 @@ import type { ToolName } from "./engine/routing";
 export const QUESTION_MAX = 500;
 
 /**
+ * The records a page can hand the assistant's sheet as "this one" (FR-AGT-02): the kinds a tool takes
+ * an id of. Any other page asks without context.
+ */
+export const PAGE_KINDS = ["task", "project", "person"] as const;
+export type PageContext = { kind: (typeof PAGE_KINDS)[number]; id: string };
+
+/**
  * What a personal tool answered (FR-AI-02). **Message keys and numbers, never prose.**
  *
  * Two reasons it is shaped this way rather than as a sentence the server wrote:
@@ -51,7 +58,14 @@ export type ChatTurn = {
   agent?: AgentShown | null;
   /** Why a fresh answer is a quoted passage although there is a key. Shown once, never stored. */
   notice?: AiNotice | null;
+  /** The asker's đúng / sai on this answer, if they gave one (FR-AGT-51). */
+  feedback?: FeedbackVerdict | null;
 };
+
+/** Feedback on an answer (FR-AGT-51). */
+export const FEEDBACK_VERDICTS = ["right", "wrong"] as const;
+export type FeedbackVerdict = (typeof FEEDBACK_VERDICTS)[number];
+export const FEEDBACK_NOTE_MAX = 500;
 
 /**
  * How a turn ended. `off_topic`: the agent declined a question outside the company (FR-AGT-03);
