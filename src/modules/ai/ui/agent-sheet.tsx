@@ -1,5 +1,5 @@
 "use client";
-// "Hỏi SuZu" in the header of every page (Phase 13 R5, FR-AGT-01): the assistant in a sheet over
+// "Hỏi SuZu AI" in the header of every page (Phase 13 R5, FR-AGT-01): the assistant in a sheet over
 // the page — a bottom sheet on a phone — that knows which record is on screen (FR-AGT-02).
 //
 // What every page pays for it is this button. The chat itself is loaded the first time the sheet

@@ -5,7 +5,7 @@ Trang này giới thiệu khung chung của SuZu One — thanh bên, bảng lệ
 ## Bố cục màn hình
 
 - **Thanh bên (bên trái)**: logo SuZu One, ô **Thao tác nhanh**, các mục đã ghim, các nhóm menu, và ở cuối là tên, email của bạn cùng nút **Đăng xuất**.
-- **Thanh trên cùng**: đường dẫn của trang hiện tại (ví dụ *Phê duyệt / Tất cả đề nghị*), và ở bên phải nút **Hỏi SuZu** (✦) và nút **Góp ý**.
+- **Thanh trên cùng**: đường dẫn của trang hiện tại (ví dụ *Phê duyệt / Tất cả đề nghị*), và ở bên phải nút **Hỏi SuZu AI** (✦) và nút **Góp ý**.
 - **Vùng nội dung**: trang bạn đang mở.
 
 Bấm logo SuZu One ở đầu thanh bên để về **Trang chủ**.
@@ -61,9 +61,9 @@ Bảng lệnh giúp bạn đi tới bất kỳ trang nào hoặc tìm một côn
 
 Hai lựa chọn này được lưu theo tài khoản, nên bạn đăng nhập ở máy khác vẫn giữ nguyên.
 
-## Nút Hỏi SuZu
+## Nút Hỏi SuZu AI
 
-Nút **Hỏi SuZu** (✦) ở thanh trên cùng mở trợ lý ngay trên trang bạn đang xem. Đang ở trang một việc, một dự án hay hồ sơ một người, bạn hỏi được "việc này", "dự án này", "người này". Xem chương **Hỏi SuZu & báo cáo**.
+Nút **Hỏi SuZu AI** (✦) ở thanh trên cùng mở trợ lý ngay trên trang bạn đang xem. Đang ở trang một việc, một dự án hay hồ sơ một người, bạn hỏi được "việc này", "dự án này", "người này". Xem chương **Hỏi SuZu AI & báo cáo**.
 
 ## Nút Góp ý
 

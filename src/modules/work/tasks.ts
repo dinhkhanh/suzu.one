@@ -1105,7 +1105,7 @@ export async function searchTasks(viewer: WorkViewer, query: string, limit = 12)
 }
 
 /**
- * The tasks a loosely typed title might mean (Ask SuZu): any whose title, without its marks, holds
+ * The tasks a loosely typed title might mean (Ask SuZu AI): any whose title, without its marks, holds
  * one of `stems` — the first letters of the words asked for, so a typo later in a word still
  * reaches it. The caller weighs the titles; open and recent work first, `limit` at most.
  */

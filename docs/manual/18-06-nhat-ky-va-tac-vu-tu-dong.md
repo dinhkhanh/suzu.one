@@ -93,12 +93,12 @@ Một tác vụ vẫn ở trạng thái **Đang chạy** sau 15 phút được c
 | `performance-probation-reviews` | Đưa vào chu kỳ đánh giá thử việc những người có hợp đồng thử việc sắp kết thúc, mỗi người với hạn riêng | Buổi sáng |
 | `performance-reminders` | Nhắc phiếu đánh giá sắp đến hạn hoặc quá hạn, buổi trao đổi kết quả chưa ghi, kết quả chưa được xác nhận đã xem | Buổi sáng |
 | `kpi-from-work` | Đề xuất số thực tế cho các KPI lấy từ dữ liệu công việc của tháng trước, chờ người chấm xác nhận | Buổi sáng |
-| `kb-ack-reminders`, `kb-embeddings` | Nhắc xác nhận đã đọc; chuẩn bị trang tri thức cho trợ lý Hỏi SuZu (trang mới đăng đã được chuẩn bị ngay khi đăng; tác vụ này làm nốt phần còn lại) | Buổi sáng / nửa đêm |
+| `kb-ack-reminders`, `kb-embeddings` | Nhắc xác nhận đã đọc; chuẩn bị trang tri thức cho trợ lý Hỏi SuZu AI (trang mới đăng đã được chuẩn bị ngay khi đăng; tác vụ này làm nốt phần còn lại) | Buổi sáng / nửa đêm |
 | `comms-announcements` | Báo cho người nhận khi thông báo hẹn giờ đến giờ đăng | Nửa đêm / buổi sáng |
 | `ops-scheduler`, `ops-reminders` | Tạo nghĩa vụ tuân thủ đến hạn; nhắc và leo thang | Nửa đêm / buổi sáng |
 | `crm-nightly`, `crm-reminders` | Cập nhật giai đoạn khách hàng, hết hạn báo giá; nhắc việc theo dõi, gia hạn, công nợ, cơ hội đứng yên | Nửa đêm / buổi sáng |
 | `candidate-retention` | Ẩn danh hồ sơ ứng viên quá hạn lưu trữ | Nửa đêm |
-| `privacy-retention` | Xoá vị trí, địa chỉ IP và thông tin thiết bị của lượt chấm công trên ứng dụng sau 90 ngày (trừ lượt còn chờ duyệt; giờ chấm công vẫn giữ); xoá hội thoại với Hỏi SuZu và câu hỏi chưa trả lời sau 180 ngày | Nửa đêm |
+| `privacy-retention` | Xoá vị trí, địa chỉ IP và thông tin thiết bị của lượt chấm công trên ứng dụng sau 90 ngày (trừ lượt còn chờ duyệt; giờ chấm công vẫn giữ); xoá hội thoại với Hỏi SuZu AI và câu hỏi chưa trả lời sau 180 ngày | Nửa đêm |
 | `report-schedules` | Gửi báo cáo định kỳ | Buổi sáng |
 | `files-cleanup` | Dọn tệp tải lên dở dang; xoá hẳn khỏi kho lưu trữ những tệp đã bị xoá quá 7 ngày | Buổi sáng |
 | `housekeeping` | Dọn dẹp cuối đêm: link duyệt nhanh đã hết hạn, lô nhập dữ liệu chưa xác nhận (sau 1 ngày) và dữ liệu tạm của lô đã xác nhận, phiên đăng nhập hết hạn, thông báo cũ hơn 180 ngày, nhật ký gửi email / thông báo đẩy / Chat / Messenger / Telegram cũ hơn 90 ngày (không xoá tin còn đang chờ gửi), lịch sử chạy tác vụ cũ hơn 90 ngày | Nửa đêm (cuối cùng) |

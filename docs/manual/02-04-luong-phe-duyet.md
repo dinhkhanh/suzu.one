@@ -65,7 +65,7 @@ Khi bạn gửi yêu cầu, hệ thống biến các quy tắc thành tên ngư�
 | **Thay đổi quy định nghỉ phép**, **Thay đổi quy định chấm công** | **Chủ sở hữu** — luồng cố định, không đổi được |
 
 > [!TIP]
-> Muốn biết chính xác ai sẽ duyệt đơn nghỉ phép hoặc đơn chấm công của bạn? Hỏi **Hỏi SuZu** — trợ lý tra theo luồng đang áp dụng cho bạn và trả lời bằng tên người.
+> Muốn biết chính xác ai sẽ duyệt đơn nghỉ phép hoặc đơn chấm công của bạn? Hỏi **Hỏi SuZu AI** — trợ lý tra theo luồng đang áp dụng cho bạn và trả lời bằng tên người.
 
 ## Nhắc hạn và leo thang tự động
 

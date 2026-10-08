@@ -1,8 +1,8 @@
-# Phase 13 — for the owner who opens Ask SuZu to the company
+# Phase 13 — for the owner who opens Ask SuZu AI to the company
 
 *Written 2026-10-08 for Phase 13 R5 on the branch `ai-assistant`. R0–R4 are on `main` and in production for the pilot (the owners and `AI_AGENT_PILOT_EMAILS`). This page is what to read before you set `AI_AGENT_AUDIENCE=everyone`. The details, release by release and run by run, are in the Phase 13 status of [`DEVELOPMENT_PLAN.md`](./DEVELOPMENT_PLAN.md). The requirements are SRS §4.13b (FR-AGT, NFR-AGT) and decisions D33–D38.*
 
-> **In one paragraph.** Ask SuZu is now an assistant that answers from the screens each person may open, and from the handbook. It can prepare eleven kinds of change for the person to confirm. Since R5 it can be opened from every page, and it knows which task, project or person is on screen. It has no rights of its own: every answer is read through the module that owns the data, as the person asking. It changes nothing by itself: a card does nothing until the person presses **Xác nhận**, and then the module's own action runs as them. Questions and the data needed to answer them go to Anthropic under standard retention, pay included where the asker may see it. You accepted this in D38, and the privacy notice now says so. Opening it to everyone is one setting in Vercel, and so is turning it off.
+> **In one paragraph.** Ask SuZu AI is now an assistant that answers from the screens each person may open, and from the handbook. It can prepare eleven kinds of change for the person to confirm. Since R5 it can be opened from every page, and it knows which task, project or person is on screen. It has no rights of its own: every answer is read through the module that owns the data, as the person asking. It changes nothing by itself: a card does nothing until the person presses **Xác nhận**, and then the module's own action runs as them. Questions and the data needed to answer them go to Anthropic under standard retention, pay included where the asker may see it. You accepted this in D38, and the privacy notice now says so. Opening it to everyone is one setting in Vercel, and so is turning it off.
 
 ---
 
@@ -84,7 +84,7 @@ What a pass proves, and what it does not:
 3. **Read the privacy notice and terms** on `https://suzu.one/privacy` and `/terms` (§3 above).
 4. **Check the budget settings in Vercel** before more people use it. They are now `AI_MONTHLY_BUDGET_USD` (code default 150) and `AI_DAILY_BUDGET_USD_EVERYONE` / `_LEADS` / `_OFFICE` (defaults 0.30 / 0.75 / 1.50). A turn costs about $0.004 at the median and $0.02 at the 95th percentile, so 150 people asking three questions a working day is about $40–60 a month. The 80 % warning comes to the owners.
 5. **Set `AI_AGENT_AUDIENCE=everyone`** in Vercel (production), and redeploy or wait for the next deploy. To go back, set `pilot`. To switch the model off for everyone, set `AI_AGENT_ENABLED=off`; the handbook answers then come back as quoted passages.
-6. **Tell people.** The two pages to point to are "Hỏi SuZu" and "Nhờ SuZu làm giúp" in the manual.
+6. **Tell people.** The two pages to point to are "Hỏi SuZu AI" and "Nhờ SuZu AI làm giúp" in the manual.
 7. **In the first week, read the feedback tab** (`/assistant/unanswered?show=feedback`) **and the usage tab** (`?show=usage`): what was marked wrong, which tier answered it, and what a day costs.
 
 ## 6. Known gaps

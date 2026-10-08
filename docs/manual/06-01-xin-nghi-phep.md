@@ -114,6 +114,6 @@ Hệ thống luôn hỏi lại "Kết thúc đơn này? Số ngày đã duyệt 
 
 ## Mẹo
 
-- Muốn biết ai sẽ duyệt đơn của mình, hỏi **Hỏi SuZu**: "ai duyệt đơn nghỉ của tôi?".
+- Muốn biết ai sẽ duyệt đơn của mình, hỏi **Hỏi SuZu AI**: "ai duyệt đơn nghỉ của tôi?".
 - Trước khi xin nghỉ dài, xem [Lịch nghỉ của nhóm](/leave/calendar) để tránh trùng với đồng nghiệp.
 - Kỳ nghỉ đủ dài có thể kèm một **kế hoạch làm thay** do hệ thống lập sẵn: bạn chọn ai làm thay những việc rơi vào thời gian nghỉ. Trên trang đơn, phần **Kế hoạch làm thay** có liên kết **Điền kế hoạch** (xem chương **Công việc**).

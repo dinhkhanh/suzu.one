@@ -87,7 +87,7 @@ Chỉ hiện với người có quyền quản lý nghỉ phép. Gồm bốn th�
 - Số ngày cơ sở của phép năm và bậc cộng thêm theo thâm niên lấy theo **tham số pháp định đang hiệu lực** (do quản trị viên quản lý ở **Quản trị → Tham số pháp định**), không nhập tay ở từng người.
 - Số dư được hệ thống cập nhật **tự động mỗi đêm**: cộng phép tháng mới, chốt năm cũ và chuyển năm, cho hết hạn ngày phép chuyển năm quá hạn, thanh toán ngày phép chưa nghỉ khi nghỉ việc.
 - Khi một tháng đã **khoá bảng công**, đơn nghỉ có ngày trong tháng đó không thể duyệt hay huỷ nữa; HR ghi điều chỉnh bảng công thay thế (xem chương **Chấm công**).
-- Bạn có thể hỏi trợ lý **Hỏi SuZu** "tôi còn bao nhiêu ngày phép" hoặc "ai duyệt đơn nghỉ của tôi".
+- Bạn có thể hỏi trợ lý **Hỏi SuZu AI** "tôi còn bao nhiêu ngày phép" hoặc "ai duyệt đơn nghỉ của tôi".
 - Trang **Báo cáo** có ô **Nghỉ hôm nay** cho biết hôm nay ai nghỉ, trong phạm vi bạn được xem.
 
 ## Các trang trong chương này

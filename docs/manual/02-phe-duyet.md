@@ -94,4 +94,4 @@ Chương này mô tả phần chung cho mọi loại. Nội dung riêng của t�
 - **Luồng phê duyệt hoạt động thế nào** — các bước, ai được hỏi, nhắc hạn, luồng mặc định và việc theo dõi toàn công ty.
 
 > [!TIP]
-> Bạn muốn biết trước ai sẽ duyệt đơn nghỉ phép hay đơn làm thêm giờ của mình? Hãy hỏi **Hỏi SuZu**, ví dụ "Ai duyệt đơn làm thêm giờ của tôi?". Trợ lý trả lời theo đúng luồng duyệt đang áp dụng cho bạn.
+> Bạn muốn biết trước ai sẽ duyệt đơn nghỉ phép hay đơn làm thêm giờ của mình? Hãy hỏi **Hỏi SuZu AI**, ví dụ "Ai duyệt đơn làm thêm giờ của tôi?". Trợ lý trả lời theo đúng luồng duyệt đang áp dụng cho bạn.

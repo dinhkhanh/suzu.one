@@ -31,6 +31,13 @@ const SPACE = {
   description: "Cách dùng từng phần của SuZu One: chấm công, nghỉ phép, công việc, lương, tri thức và các màn hình quản trị.",
 };
 const DIR = path.join(process.cwd(), "docs/manual");
+/** A page renamed in its file is found again by the title it had, and takes the new one. */
+const FORMER_TITLES: Record<string, string[]> = {
+  "Hỏi SuZu AI & báo cáo": ["Hỏi SuZu & báo cáo"],
+  "Hỏi SuZu AI": ["Hỏi SuZu"],
+  "Nhờ SuZu AI làm giúp": ["Nhờ SuZu làm giúp"],
+  "Hỏi SuZu AI về số liệu của bạn": ["Hỏi SuZu về số liệu của bạn"],
+};
 const FILE = /^(\d{2})(?:-(\d{2}))?-[a-z0-9-]+\.md$/;
 
 type ManualPage = { file: string; chapter: string; child: boolean; title: string; content: ReturnType<typeof markdownToDoc>["doc"] };
@@ -85,7 +92,7 @@ async function main() {
     .from(schema.kbPage)
     .where(and(eq(schema.kbPage.spaceId, space.id), isNull(schema.kbPage.deletedAt)));
   const claimed = new Set<string>();
-  const find = (title: string) => existing.find((row) => !claimed.has(row.id) && (row.title === title || row.slug === pageSlugOf(title)));
+  const find = (title: string) => existing.find((row) => !claimed.has(row.id) && [title, ...(FORMER_TITLES[title] ?? [])].some((name) => row.title === name || row.slug === pageSlugOf(name)));
 
   const chapterIds = new Map<string, string>();
   const positions = new Map<string | null, number>();
