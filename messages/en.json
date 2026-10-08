@@ -11685,6 +11685,8 @@
       "provider_error": "The AI service could not be reached, so this is a quote from the source page. Try again in a few minutes."
     },
     "mayBeWrong": "The answer is quoted from a knowledge-base page and may be incomplete — open the source to read it in full.",
+    "mayBeWrongData": "SuZu can be wrong — open the pages above to check.",
+    "mayBeWrongAny": "SuZu can be wrong — check the related page.",
     "noAnswer": "I could not find an answer in the pages you may read.",
     "noAnswerLogged": "The question has been logged so HR can write the missing page. You can also ask HR directly.",
     "agent": {

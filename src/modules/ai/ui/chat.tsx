@@ -198,8 +198,9 @@ function AnswerBody({ turn }: { turn: Turn }) {
           {turn.outcome === "limited" ? <p className="text-xs text-muted-foreground">{t("agent.limited")}</p> : null}
           {/* Why this is a quoted passage and not a written answer: a ceiling, the switch, the provider. */}
           {turn.notice && turn.notice !== "no_key" ? <p className="text-xs text-muted-foreground">{t(`notices.${turn.notice}`)}</p> : null}
-          {/* A turn that only proposed wrote nothing that could be wrong: its cards say every field. */}
-          {turn.body ? <p className="text-xs text-faint">{t("mayBeWrong")}</p> : null}
+          {/* A turn that only proposed wrote nothing that could be wrong: its cards say every field.
+              An answer that quoted no handbook page was written from the app's own screens, linked above when it has cards. */}
+          {turn.body ? <p className="text-xs text-faint">{t(turn.citations.length > 0 || !turn.agent ? "mayBeWrong" : turn.agent.cards.some((card) => card.items.length > 0) ? "mayBeWrongData" : "mayBeWrongAny")}</p> : null}
         </>
       )}
     </>
@@ -362,7 +363,7 @@ export function AssistantChat({
           </Button>
         </div>
         <FormError namespace="assistant.errors" errorKey={form.errorKey} />
-        {sheet ? null : <p className="hidden px-1 text-xs text-faint md:block">{t("mayBeWrong")}</p>}
+        {sheet ? null : <p className="hidden px-1 text-xs text-faint md:block">{t("mayBeWrongAny")}</p>}
       </form>
     </div>
   );

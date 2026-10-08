@@ -11685,6 +11685,8 @@
       "provider_error": "Không kết nối được dịch vụ AI, nên đây là đoạn trích từ trang nguồn. Hãy thử lại sau ít phút."
     },
     "mayBeWrong": "Câu trả lời được trích từ trang Tri thức và có thể chưa đầy đủ — hãy mở trang nguồn để đọc đủ.",
+    "mayBeWrongData": "SuZu có thể nhầm — hãy mở các trang ở trên để kiểm tra.",
+    "mayBeWrongAny": "SuZu có thể nhầm — hãy kiểm tra lại trên trang liên quan.",
     "noAnswer": "Mình không tìm thấy câu trả lời trong các trang bạn được xem.",
     "noAnswerLogged": "Câu hỏi đã được ghi lại để phòng Nhân sự bổ sung trang còn thiếu. Bạn có thể hỏi trực tiếp phòng Nhân sự.",
     "agent": {
