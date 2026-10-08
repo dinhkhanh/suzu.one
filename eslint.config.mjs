@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import prettier from "eslint-config-prettier/flat";
 import path from "node:path";
 
 // Module boundaries (development plan §2.1), checked on the resolved path, so a relative import
@@ -113,6 +114,8 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Formatting is Prettier's (.prettierrc.json, `pnpm format`): last, so no rule above argues with it.
+  prettier,
 ]);
 
 export default eslintConfig;
