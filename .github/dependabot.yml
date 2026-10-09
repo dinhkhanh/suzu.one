@@ -23,6 +23,10 @@ updates:
       # pinned exactly in package.json and moved by hand, with the patch redone and production
       # watched, never by a bot.
       - dependency-name: postgres
+      # The Node types follow the Node that runs the app: 24 on Vercel and in CI. A new major of
+      # the types waits for the runtime to move, and moves with it.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
