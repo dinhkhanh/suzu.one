@@ -15,11 +15,23 @@ Format: `id:base64key,id:base64key` — the **first** key encrypts new values; a
 1. Generate a key: `openssl rand -base64 32`. Pick a new id, e.g. `k2026`.
 2. Put it **first**: `DATA_ENCRYPTION_KEYS=k2026:<new>,k2025:<old>`. Redeploy. New writes use `k2026`; everything stays readable.
 3. Re-wrap existing values: `curl -H "Authorization: Bearer $CRON_SECRET" https://suzu.one/api/cron/field-keys-rewrap` (job `field-keys-rewrap`, `src/modules/core-hr/rewrap.ts`). It calls `rewrap()` on every value whose key id is not the active one and reports `rewrapped` / `alreadyCurrent`; run it again until `rewrapped` is 0. A module that adds encrypted columns adds them to its re-wrap list.
-4. When the job reports zero values on the old key, remove the old key from the variable and redeploy. Keep the old key in the offline copy for as long as any database backup from before step 3 is retained (≥ 1 year, NFR-OPS-02).
+4. When the job reports zero values on the old key, remove the old key from the variable and redeploy. Keep the old key in the offline copy for as long as any database backup from before step 3 is retained: 400 days, the monthly backups' retention ([backup.md](runbooks/backup.md)).
 
 ### `DATA_BLIND_INDEX_KEY`
 
 Used for look-ups on encrypted values (for example "is this national ID already on file?"). It cannot be rotated in place: changing it means recomputing every index column. Treat a leak as low severity (it reveals equality of values, not the values) and plan the recompute as a migration.
+
+## The backup key (age)
+
+Every database backup and every file copy on Google Cloud is encrypted with [age](https://age-encryption.org) to one public key (`AGE_RECIPIENT`, a variable of the GitHub `backups` environment). The private key exists only in the restore kit ([backup.md](runbooks/backup.md#the-restore-kit-owner-kept-offline)), never online.
+
+**It cannot be recovered either.** Without it, no backup can be read: it is as precious as the field-encryption keys, and kept beside them.
+
+### Rotating (if the private key may have leaked, or when the person holding the kit leaves)
+
+1. `age-keygen -o suzu-backup-new.key`; put it in the kit beside the old one; delete the file.
+2. Set `AGE_RECIPIENT` to the new public key. From the next run, new backups use it.
+3. Keep the old private key in the kit for 400 days: backups made before step 2 still need it. Files already on Google Cloud stay encrypted to the old key for as long as they are kept, so keep that key while any of them is.
 
 ## Other secrets
 

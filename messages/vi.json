@@ -14392,7 +14392,7 @@
     "privacy": {
       "title": "Chính sách quyền riêng tư",
       "description": "Cách SuZu Group thu thập, sử dụng, chia sẻ và bảo vệ dữ liệu cá nhân trong SuZu One.",
-      "updated": "Cập nhật lần cuối: 07/10/2026",
+      "updated": "Cập nhật lần cuối: 09/10/2026",
       "intro": [
         "Chính sách này giải thích cách Công ty Cổ phần SuZu Group (\"SuZu Group\", \"chúng tôi\") thu thập, sử dụng, chia sẻ và bảo vệ dữ liệu cá nhân trong SuZu One — nền tảng vận hành nội bộ tại https://suzu.one (\"Dịch vụ\").",
         "SuZu One là công cụ nội bộ, chỉ dành cho nhân viên, cộng tác viên và nhân sự khác của SuZu Group và các công ty liên kết đã được cấp tài khoản Google Workspace của công ty trên suzu.vn hoặc suzu.group. Dịch vụ không cung cấp cho công chúng. Trang tuyển dụng công khai tại https://suzu.one/careers áp dụng thông báo quyền riêng tư hiển thị trên mẫu ứng tuyển."
@@ -14482,10 +14482,11 @@
           "list": [
             "Vercel Inc. — lưu trữ ứng dụng, và bộ nhớ đệm cho cấu hình và dữ liệu tham chiếu (không bao giờ chứa lương hay dữ liệu cá nhân nhạy cảm khác);",
             "Supabase Inc. — cơ sở dữ liệu, đặt tại Singapore;",
-            "Cloudflare, Inc. — kho tệp riêng tư (R2), lưu tại khu vực châu Á – Thái Bình Dương, và phân tích văn bản phục vụ tìm kiếm kho tri thức (Workers AI), nhận nội dung kho tri thức và các câu hỏi được đặt ra;",
+            "Cloudflare, Inc. — kho tệp riêng tư (R2), lưu tại khu vực châu Á – Thái Bình Dương, và các bản sao lưu đã mã hoá của cơ sở dữ liệu và tệp; cùng phân tích văn bản phục vụ tìm kiếm kho tri thức (Workers AI), nhận nội dung kho tri thức và các câu hỏi được đặt ra;",
             "Resend — gửi email do Dịch vụ phát đi;",
             "Functional Software Inc. (Sentry) — theo dõi lỗi;",
-            "Google LLC — đăng nhập Google Workspace, và thông báo, lịch họp qua Google Chat, Google Lịch khi công ty bật các tính năng này;",
+            "Google LLC — đăng nhập Google Workspace, và thông báo, lịch họp qua Google Chat, Google Lịch khi công ty bật các tính năng này; và, trên Google Cloud tại Singapore, một bộ bản sao lưu đã mã hoá khác;",
+            "GitHub, Inc. — chạy tác vụ sao lưu, chỉ chuyển dữ liệu đi qua để vào các bản sao lưu đã mã hoá và không giữ lại gì;",
             "Anthropic PBC — trợ lý Hỏi SuZu AI, khi công ty bật tính năng này. Họ nhận câu hỏi được đặt ra, nội dung kho tri thức và phần dữ liệu trong Dịch vụ cần để trả lời mà người hỏi được xem — có thể gồm dữ liệu cá nhân của nhân viên, kể cả tiền lương khi người hỏi có quyền xem và vừa xác nhận lại danh tính. Số điện thoại, email, số giấy tờ tùy thân và tài khoản ngân hàng không được gửi đi. Anthropic xử lý dữ liệu theo điều khoản thương mại của họ và lưu giữ theo thời hạn tiêu chuẩn của họ — công ty không dùng chế độ không lưu giữ dữ liệu (zero data retention) — và không dùng dữ liệu này để huấn luyện mô hình."
           ],
           "after": [
@@ -14508,7 +14509,10 @@
             "Phiên đăng nhập: bảy ngày kể từ lần hoạt động cuối. Báo cáo lỗi: một thời hạn giới hạn, sau đó tự động bị xoá.",
             "Cuộc trò chuyện với trợ lý Hỏi SuZu AI, kèm phản hồi đúng / sai bạn gửi: 180 ngày kể từ lần cuối cuộc trò chuyện được dùng, hoặc đến khi bạn xoá. Câu trả lời có số liệu tiền lương chỉ hiện một lần và không được lưu."
           ],
-          "after": ["Khi hết thời hạn lưu trữ, chúng tôi xoá dữ liệu hoặc ẩn danh hoá dữ liệu."]
+          "after": [
+            "Khi hết thời hạn lưu trữ, chúng tôi xoá dữ liệu hoặc ẩn danh hoá dữ liệu.",
+            "Sao lưu: cơ sở dữ liệu và các tệp được sao chép hằng ngày vào các bản sao lưu đã mã hoá mà chỉ công ty mở được, để khôi phục Dịch vụ khi có sự cố. Dữ liệu đã xoá khỏi Dịch vụ còn trong các bản sao lưu này tối đa 13 tháng rồi bị xoá hẳn. Bản sao lưu chỉ được mở để khôi phục Dịch vụ; dữ liệu đã xoá mà một lần khôi phục mang trở lại sẽ được xoá lại."
+          ]
         },
         {
           "heading": "11. Quyền của bạn",

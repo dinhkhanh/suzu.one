@@ -10,6 +10,7 @@ Something is wrong in production. This page is the order to work in, and how the
 | **Cron switch** for `midnight` / `morning` / `evening` is late or reports a failure | A schedule never fired, died without a word, or a job in it failed | Once, below |
 | In-app notice **"Scheduled job failed"** / **"stopped before it finished"** (to the owners) | One job failed, or the platform killed a run that outlived its five minutes | Built in; Admin → Jobs shows the runs |
 | Admin → Jobs **"Failed deliveries"** tile is red | Emails, pushes, Chat, Messenger or Telegram messages the outboxes gave up on in the last 7 days — a provider key expired, a quota ran out | Built in; open it weekly |
+| **Backup check** `backup-hourly` / `backup-nightly` is late or failed (healthchecks.io), or GitHub mails that the Backup workflow failed | A backup was not made, or was made and did not pass its checks | [backup.md](backup.md#5-healthchecksio) |
 | **Sentry** new issue | An error a person or a job hit. Only the `production` environment matters | Built in (`SENTRY_DSN`) |
 | People say so | Anything | — |
 
@@ -45,6 +46,22 @@ The schedules ping a dead-man's switch when `CRON_PING_URL` is set: `<base>/<sch
 5. **A job.** Admin → Jobs → the failed run's error. Fix the cause, then **Run now** on that job (owner). Jobs are written to be safe to run again. A schedule whose tail did not run (`cron.continuation_failed` in the logs, or a "fail" ping with no failed job) — run the jobs that have no run today by hand, in the order of `src/app/api/cron/registry.ts`.
 6. **Deliveries.** The failed-delivery tile: Resend (email), the VAPID keys (push), the Chat webhook, the Messenger page token, the Telegram bot token — whichever channel is counted. Fix the key in Vercel, redeploy; the morning `notifications-daily` job retries what is still pending (failed rows are not retried: they were given up on).
 7. **Data looks wrong.** Stop and read [restore.md](restore.md) before changing anything by hand.
+
+### A backup check is red
+
+Not an outage: the app works, but the newest backup is older than it should be. Fix it the same day. Actions → Backup → the failed run shows which step stopped; the log names the step and never the data.
+
+| Step that failed | Usually |
+| --- | --- |
+| Tools | The PostgreSQL apt repository was down. Re-run the job. |
+| Dumping | `BACKUP_DATABASE_URL` is wrong or its password was rotated, the Supabase pooler is down, or a migration added a schema `backup_reader` cannot read (run the grants in `scripts/backup/setup.sql` again). |
+| The table of contents / Restoring / verify.sql | The dump is incomplete or does not restore: **the most serious kind**, as that backup would not have saved anyone. Read the message. A check named in `verify.sql` that no longer fits the data is fixed in `verify.sql`; a restore error needs finding out why. |
+| Taken at migration | Production ran a migration `main` does not have. Find out how. |
+| Uploading / Google Cloud | A token expired or was revoked, or the Google Cloud sign-in failed (the Workload Identity provider or the service account was changed). |
+| Files … missing | A file a record points at is not in production or not in a backup. Find which record (query `stored_file` for live rows and compare with the bucket). Production missing a file is data loss to deal with now ([restore.md](restore.md#files)). |
+| No run at all | GitHub disabled the schedule (it does after 60 days without a commit), or Actions are down. Actions → Backup → enable it. |
+
+When it is fixed, run it by hand: Actions → Backup → Run workflow → `nightly`.
 
 ## After the incident
 
