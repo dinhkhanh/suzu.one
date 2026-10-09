@@ -68,7 +68,7 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   // Only for a key that is not scoped to a workspace: the workspace every request is billed to.
   ANTHROPIC_WORKSPACE_ID: z.string().min(1).optional(),
-  ANTHROPIC_MODEL_SIMPLE: z.string().min(1).default("claude-haiku-4-5"),
+  ANTHROPIC_MODEL_SIMPLE: z.string().min(1).default("claude-haiku-5-5"),
   ANTHROPIC_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
   ANTHROPIC_MODEL_COMPLEX: z.string().min(1).default("claude-opus-5-5"),
   // The kill switch (FR-AGT-52): "off" sends no question and no draft to any model, whatever the
