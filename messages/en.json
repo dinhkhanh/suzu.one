@@ -35,6 +35,10 @@
     "exportXlsx": "Excel (.xlsx)",
     "exportCsv": "CSV (.csv)"
   },
+  "maintenance": {
+    "title": "Down for maintenance",
+    "body": "The system is paused for maintenance. Please come back in a little while."
+  },
   "signIn": {
     "title": "Sign in",
     "subtitle": "Use your company Google Workspace account (suzu.vn or suzu.group).",
@@ -14388,7 +14392,7 @@
     "privacy": {
       "title": "Privacy Policy",
       "description": "How SuZu Group collects, uses, shares and protects personal data in SuZu One.",
-      "updated": "Last updated: 7 October 2026",
+      "updated": "Last updated: 9 October 2026",
       "intro": [
         "This Privacy Policy explains how Công ty Cổ phần SuZu Group (\"SuZu Group\", \"we\", \"us\") collects, uses, shares and protects personal data in SuZu One, the internal operations platform available at https://suzu.one (the \"Service\").",
         "SuZu One is an internal tool. It is available only to employees, collaborators and other personnel of SuZu Group and its affiliated companies who have been given a company Google Workspace account on suzu.vn or suzu.group. It is not offered to the public. The public careers pages at https://suzu.one/careers are covered by the privacy notice shown on the application form."
@@ -14478,10 +14482,11 @@
           "list": [
             "Vercel Inc. — application hosting, and a cache for configuration and reference data (never salary or other sensitive personal data);",
             "Supabase Inc. — database, hosted in Singapore;",
-            "Cloudflare, Inc. — private file storage (R2), kept in the Asia-Pacific region, and the text analysis behind knowledge base search (Workers AI), which receives the knowledge base content and the questions asked;",
+            "Cloudflare, Inc. — private file storage (R2), kept in the Asia-Pacific region, and encrypted backup copies of the database and the files; and the text analysis behind knowledge base search (Workers AI), which receives the knowledge base content and the questions asked;",
             "Resend — delivery of emails the Service sends;",
             "Functional Software Inc. (Sentry) — error monitoring;",
-            "Google LLC — Google Workspace sign-in, and Google Chat and Google Calendar notifications and meetings where the company has enabled them;",
+            "Google LLC — Google Workspace sign-in, and Google Chat and Google Calendar notifications and meetings where the company has enabled them; and, on Google Cloud in Singapore, a further set of encrypted backup copies;",
+            "GitHub, Inc. — runs the backup job, which passes the data through on its way to the encrypted backups and keeps none of it;",
             "Anthropic PBC — the Ask SuZu AI assistant, where the company has enabled it. It receives the question asked, the knowledge base content and the part of the data in the Service needed to answer it that the person asking may see — which can include employees' personal data, pay included where the person asking may see it and has just re-confirmed their identity. Phone numbers, email addresses, identity document numbers and bank accounts are not sent. Anthropic processes the data under its commercial terms and keeps it for its standard retention period — the company does not use zero data retention — and does not use it to train models."
           ],
           "after": [
@@ -14504,7 +14509,10 @@
             "Sessions: seven days from the last activity. Error reports: a limited period, after which they are deleted automatically.",
             "Conversations with the Ask SuZu AI assistant, with the right / wrong feedback you give: 180 days from the conversation's last use, or until you delete it. An answer that holds pay figures is shown once and not kept."
           ],
-          "after": ["When a retention period ends, we delete the data or make it anonymous."]
+          "after": [
+            "When a retention period ends, we delete the data or make it anonymous.",
+            "Backups: the database and the files are copied every day into encrypted backups that only the company can open, so they can be restored after a failure. Data deleted from the Service remains in those backups for up to 13 months and is then gone for good. A backup is opened only to restore the Service; anything a restore brings back that had been deleted is deleted again."
+          ]
         },
         {
           "heading": "11. Your rights",

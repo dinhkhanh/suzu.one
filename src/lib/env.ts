@@ -158,6 +158,10 @@ const schema = z.object({
   // what they would have. "enforce" sends the same policy as the enforcing header — after the
   // reports have been read; "off" sends neither.
   CSP_MODE: z.enum(["report-only", "enforce", "off"]).default("report-only"),
+  // Maintenance (docs/runbooks/restore.md): "on" closes the app while the database is restored.
+  // The proxy answers every request with 503 and a page that says so; nothing is read or written,
+  // and the scheduled jobs do not run. Set it in Vercel and redeploy, and the same to lift it.
+  MAINTENANCE_MODE: z.enum(["on", "off"]).default("off"),
   // Sentry's DSN, here only for that policy: the host the browser SDK posts to, and the endpoint
   // that takes violation reports, are both read off it. The SDK itself reads these names directly
   // (src/lib/observability), so any value passes here; one that is not a DSN is ignored.

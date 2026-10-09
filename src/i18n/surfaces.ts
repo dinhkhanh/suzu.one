@@ -67,6 +67,8 @@ export const PUBLIC_SURFACES: readonly Surface[] = [
    * was signed out in the same step — and anyone walking past can read its screen.
    */
   { prefix: "/kiosk", name: "kiosk", namespaces: ["kiosk", "theme", "controls"] },
+  /** The page every visitor sees while the app is closed for maintenance (`MAINTENANCE_MODE`). */
+  { prefix: "/maintenance", name: "maintenance", namespaces: ["maintenance", "theme", "controls"] },
   /** Nobody is signed in here either, by definition. */
   { prefix: "/sign-in", name: "signIn", namespaces: ["app", "signIn", "theme", "controls"] },
   /** The home page a signed-out visitor sees; a signed-in one is sent on to the app. */

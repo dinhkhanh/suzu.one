@@ -8,6 +8,8 @@ What to do, step by step, when the production system needs a hand. Written for t
 | [Rollback](rollback.md) | A deploy broke something: go back to the previous build. The migration rule that makes that safe. |
 | [Backup](backup.md) | What is backed up, where, for how long — and the monthly dump the platform does not keep. |
 | [Restore](restore.md) | Getting data back, and the restore drill (twice a year, NFR-OPS-02). |
+
+Where backup and restore are going — automated, encrypted, checked nightly — is [the backup plan](../BACKUP_PLAN.md).
 | [Environments](environments.md) | Moving off the shared database: a staging project, and nobody's laptop pointing at production. |
 
 The service names and ids (Vercel team and project, Supabase project ref) are in the owner's password manager beside the logins; they are not repeated here.

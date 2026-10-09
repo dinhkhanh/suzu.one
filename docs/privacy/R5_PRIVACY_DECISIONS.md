@@ -16,6 +16,7 @@ The periods are named constants in `src/modules/privacy/engine/retention.ts`, an
 | Unsuccessful **candidates** | Their retention window (FR-REC-13, already in place) | `candidate-retention` job anonymises them. |
 | **Former employees'** personal details | 3 years after the last day of their last employment | HR-confirmed anonymisation on Admin → Privacy (`/admin/privacy`). Never automatic. |
 | Payroll, tax, insurance and labour **records** | At least 10 years (Accounting Law art. 41; Decree 174/2016 art. 12) | Never removed by the app. |
+| **Backups** of the database and the files (decided 2026-10-09, [BACKUP_PLAN.md](../BACKUP_PLAN.md) D6) | Whatever the app deleted or anonymised stays in the encrypted backups for up to 400 days | The backup buckets' lifecycle rules remove it. A restore brings deleted data back. Afterwards the owner runs `privacy-retention`, `candidate-retention` and `files-cleanup` again, and repeats from the audit log any anonymisation or erasure done after the restore point ([restore.md](../runbooks/restore.md)). The privacy notice says so (section 10). |
 
 Why 3 years for former employees: it outlasts the 1-year limit for individual labour disputes (Labour Code art. 190) and the 3-year limit for contract claims (Civil Code art. 429). After that the company has no purpose for contact details, emergency contacts or scanned diplomas.
 
