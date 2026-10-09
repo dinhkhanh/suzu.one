@@ -1,0 +1,83 @@
+name: Backup
+
+# The database and file backups (docs/BACKUP_PLAN.md, docs/runbooks/backup.md): an hourly dump in
+# business hours, and a nightly one that is restored and checked before it is kept, with the file
+# backup after it. Everything is done by scripts/backup/run.sh.
+#
+# This repository is public, and so is this workflow's log: the scripts print step names, pass or
+# fail, and counts — never data. The credentials live in the `backups` environment, which only
+# `main` may use, so no pull request (and no fork's) ever sees them. Nothing runs until the
+# repository variable BACKUPS_ENABLED is `true`: the last step of the set-up.
+on:
+  schedule:
+    # Every hour 07:00–22:00 in Vietnam, Monday to Saturday (00–15 UTC). RPO ≤ 1 h (NFR-OPS-02).
+    - cron: "0 0-15 * * 1-6"
+    # 01:00 in Vietnam every day.
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: Which run
+        type: choice
+        options: [nightly, hourly]
+        default: nightly
+
+# One backup at a time; a late one waits rather than being cancelled.
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    if: github.ref == 'refs/heads/main' && vars.BACKUPS_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: backups
+    permissions:
+      contents: read
+      # Signing in to Google Cloud through Workload Identity Federation: no key is stored anywhere.
+      id-token: write
+    env:
+      KIND: ${{ github.event_name == 'workflow_dispatch' && inputs.kind || (github.event.schedule == '0 18 * * *' && 'nightly' || 'hourly') }}
+      PG_BIN: /usr/lib/postgresql/17/bin
+      AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
+      R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+      BACKUP_BUCKET: ${{ vars.BACKUP_BUCKET }}
+      FILES_BUCKET: ${{ vars.FILES_BUCKET }}
+      FILES_BACKUP_BUCKET: ${{ vars.FILES_BACKUP_BUCKET }}
+      GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      R2_BACKUP_KEY_ID: ${{ secrets.R2_BACKUP_KEY_ID }}
+      R2_BACKUP_SECRET: ${{ secrets.R2_BACKUP_SECRET }}
+      R2_FILES_READ_KEY_ID: ${{ secrets.R2_FILES_READ_KEY_ID }}
+      R2_FILES_READ_SECRET: ${{ secrets.R2_FILES_READ_SECRET }}
+      HC_PING_URL: ${{ secrets.HC_PING_URL }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # The PostgreSQL 17 client from PGDG (the runner's own is older than the server), and age.
+      - name: Tools
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends postgresql-client-17 age >/dev/null
+          "$PG_BIN/pg_dump" --version
+
+      - name: Sign in to Google Cloud
+        if: env.KIND == 'nightly'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - if: env.KIND == 'nightly'
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Back up (${{ env.KIND }})
+        run: scripts/backup/run.sh "$KIND"

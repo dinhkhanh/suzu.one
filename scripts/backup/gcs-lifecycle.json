@@ -1,0 +1,7 @@
+{
+  "rule": [
+    { "action": { "type": "Delete" }, "condition": { "age": 35, "matchesPrefix": ["daily/"] } },
+    { "action": { "type": "Delete" }, "condition": { "age": 400, "matchesPrefix": ["monthly/"] } },
+    { "action": { "type": "Delete" }, "condition": { "daysSinceCustomTime": 400, "matchesPrefix": ["files/"] } }
+  ]
+}
