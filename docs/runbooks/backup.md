@@ -143,12 +143,12 @@ gh variable set R2_ENDPOINT --env backups --repo dinhkhanh/suzu.one --body 'http
 gh variable set BACKUP_BUCKET --env backups --repo dinhkhanh/suzu.one --body suzu-one-backups
 gh variable set FILES_BUCKET --env backups --repo dinhkhanh/suzu.one --body suzu-one-private
 gh variable set FILES_BACKUP_BUCKET --env backups --repo dinhkhanh/suzu.one --body suzu-one-files-backup
-gh variable set GCS_BUCKET --env backups --repo dinhkhanh/suzu.one --body '<bucket>'
+gh variable set GCS_BUCKET --env backups --repo dinhkhanh/suzu.one --body '<bucket>'     # the bare name, no gs://
 gh variable set GCP_WORKLOAD_IDENTITY_PROVIDER --env backups --repo dinhkhanh/suzu.one --body 'projects/<project number>/locations/global/workloadIdentityPools/github/providers/suzu-one'
 gh variable set GCP_SERVICE_ACCOUNT --env backups --repo dinhkhanh/suzu.one --body 'backup-writer@<project>.iam.gserviceaccount.com'
 ```
 
-`HC_PING_URL` is `https://hc-ping.com/<ping key>`, the same base as Vercel's `CRON_PING_URL`.
+`HC_PING_URL` is `https://hc-ping.com/<ping key>`, the same base as Vercel's `CRON_PING_URL`. `GCS_BUCKET` is the bucket's bare name: the scripts add `gs://` themselves, and `gs://suzu-one-backups` fails the first upload with "Invalid bucket name: 'gs:'".
 
 ### 7. The first run
 
