@@ -20,12 +20,12 @@ Write down, before touching anything: when the damage happened (the audit log, S
 
 ```sh
 export AGE_IDENTITY=~/path/to/suzu-backup.key        # the kit's age key, saved to a file for now
-export R2_ENDPOINT=https://<account id>.r2.cloudflarestorage.com BACKUP_BUCKET=suzu-backups
+export R2_ENDPOINT=https://<account id>.r2.cloudflarestorage.com BACKUP_BUCKET=suzu-one-backups
 export R2_BACKUP_KEY_ID=… R2_BACKUP_SECRET=…          # the kit's read-only token
 scripts/backup/restore-local.sh hourly                # or: daily, monthly; or a name: daily suzu-2026-10-09T0100.dump.age
 ```
 
-Pick the newest backup **before** the restore point (`aws s3 ls s3://suzu-backups/hourly/ --endpoint-url $R2_ENDPOINT` lists them; names are Vietnam time). From Google Cloud instead: `FROM=gcs GCS_BUCKET=<bucket> scripts/backup/restore-local.sh daily`, signed in with `gcloud auth login`.
+Pick the newest backup **before** the restore point (`aws s3 ls s3://suzu-one-backups/hourly/ --endpoint-url $R2_ENDPOINT` lists them; names are Vietnam time). From Google Cloud instead: `FROM=gcs GCS_BUCKET=<bucket> scripts/backup/restore-local.sh daily`, signed in with `gcloud auth login`.
 
 The script downloads, decrypts, restores into a throwaway container, checks it, and prints its URL. Read what you need with `psql "<url>"`. Encrypted fields are ciphertext there. To read one, run the app against it (see the drill, step 4). When done: `docker rm -f <container>`, and delete the key file.
 
@@ -35,7 +35,7 @@ The script downloads, decrypts, restores into a throwaway container, checks it, 
 2. **Choose the backup.** If the restore point is inside Supabase's last 7 days and a scheduled backup sits just before it: Supabase → Database → Backups → Restore. That is the simplest, so skip to step 4. Otherwise take the newest hourly or daily dump before the restore point. Restore it locally first ([above](#reading-records-back)) and confirm the damage is **not** in it.
 3. **Restore the dump into production.** Download the chosen backup and decrypt it, then restore it with the **postgres** session-pooler URL (Supabase → Connect → Session pooler):
    ```sh
-   aws s3 cp s3://suzu-backups/hourly/<name>.age . --endpoint-url "$R2_ENDPOINT"     # the kit's token in AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+   aws s3 cp s3://suzu-one-backups/hourly/<name>.age . --endpoint-url "$R2_ENDPOINT"     # the kit's token in AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
    age -d -i "$AGE_IDENTITY" -o suzu.dump <name>.age
    export PROD='postgresql://postgres.<ref>:<password>@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres'
    $PG_BIN/psql "$PROD" -v ON_ERROR_STOP=1 -c 'drop schema public cascade' -c 'drop schema app cascade' -c 'drop schema drizzle cascade'
@@ -62,7 +62,7 @@ export RESTORE_DATABASE_URL="$PROD"        # or the URL restore-local.sh printed
 export TARGET_ENDPOINT=https://<account id>.r2.cloudflarestorage.com TARGET_BUCKET=suzu-one-private
 export TARGET_ACCESS_KEY_ID=… TARGET_SECRET_ACCESS_KEY=…     # an R2 token that may write the target bucket
 # From the R2 copy (the kit's read token):
-export R2_ENDPOINT="$TARGET_ENDPOINT" FILES_BACKUP_BUCKET=suzu-files-backup R2_BACKUP_KEY_ID=… R2_BACKUP_SECRET=…
+export R2_ENDPOINT="$TARGET_ENDPOINT" FILES_BACKUP_BUCKET=suzu-one-files-backup R2_BACKUP_KEY_ID=… R2_BACKUP_SECRET=…
 pnpm exec tsx --require ./scripts/server-only-shim.cjs scripts/backup/restore-files.ts --dry-run   # then without --dry-run
 # Or from Google Cloud (gcloud signed in), e.g. when Cloudflare is gone:
 FROM=gcs GCS_BUCKET=<bucket> AGE_IDENTITY=~/path/to/suzu-backup.key pnpm exec tsx --require ./scripts/server-only-shim.cjs scripts/backup/restore-files.ts

@@ -36,12 +36,12 @@ GitHub Actions ─────────────────────�
                                             │                                    │
                                  encrypt with age (public key only)              │
                                             │                                    │
-                                 R2 `suzu-backups`: hourly/ daily/ monthly/      │
+                                 R2 `suzu-one-backups`: hourly/ daily/ monthly/  │
                                             │ (nightly: daily + monthly only)    │
                                  GCS `suzu-backups-gcs`, Singapore               │
                                                                                  │
                                  files: only the objects not yet copied ◄────────┘
-                                   → `suzu-files-backup` (R2)
+                                   → `suzu-one-files-backup` (R2)
                                    → age → GCS `files/` (create-only)
                                  objects gone from production: tombstoned
                                             │
@@ -62,10 +62,10 @@ Three copies, on two different kinds of storage, one of them offsite. For a clou
 | --- | --- | --- | --- | --- |
 | **Database** | 1. Production | Supabase (AWS), through Vercel | — | the live copy |
 | | 2. Supabase daily backups, 7 days | Supabase, same project | no (the project owner can restore over or delete them) | a copy, **not** a separate failure domain |
-| | 3. `suzu-backups` on R2: hourly, daily, monthly | Cloudflare | bucket lock | copy 2, medium 2, offsite |
+| | 3. `suzu-one-backups` on R2: hourly, daily, monthly | Cloudflare | bucket lock | copy 2, medium 2, offsite |
 | | 4. `suzu-backups-gcs`: daily, monthly | Google Cloud, own project | retention policy (Bucket Lock) | copy 3, medium 3 |
 | **Files** | 1. `suzu-one-private` on R2 | Cloudflare | — | the live copy |
-| | 2. `suzu-files-backup` on R2, nightly, incremental | Cloudflare, same account | lock on `deleted/` | copy 2: catches mistakes, a bad key, a bad job; not a separate failure domain |
+| | 2. `suzu-one-files-backup` on R2, nightly, incremental | Cloudflare, same account | lock on `deleted/` | copy 2: catches mistakes, a bad key, a bad job; not a separate failure domain |
 | | 3. `suzu-backups-gcs` `files/`, nightly, incremental, encrypted | Google Cloud | retention policy, create-only access | copy 3, medium 2, offsite |
 
 Both hold the rule with at most a day's gap, and files cost about one extra copy of themselves per place, not one per backup (§2.2).
@@ -113,7 +113,7 @@ The database and the files want opposite answers.
 
 ### 3.2 Cadence and retention
 
-| Prefix in `suzu-backups` | When | Kept (bucket lock = lifecycle) | Meets |
+| Prefix in `suzu-one-backups` | When | Kept (bucket lock = lifecycle) | Meets |
 | --- | --- | --- | --- |
 | `hourly/` | every hour 07:00–22:00 ICT, Mon–Sat | 3 days | RPO ≤ 1 h during business hours |
 | `daily/` | 01:00 ICT every day | 35 days | "daily ≥ 30 days" |
@@ -158,7 +158,7 @@ Kept offline by the owner, checked at every drill:
 
 - the age private key (dumps);
 - `DATA_ENCRYPTION_KEYS` and `DATA_BLIND_INDEX_KEY`, every key still named by a retained backup ([KEY_ROTATION.md](KEY_ROTATION.md));
-- the R2 read token for `suzu-backups` and `suzu-files-backup`;
+- the R2 read token for `suzu-one-backups` and `suzu-one-files-backup`;
 - the Supabase, Vercel, Cloudflare, Google Cloud and GitHub logins.
 
 ### 4.2 Five kinds of restore
@@ -168,7 +168,7 @@ Kept offline by the owner, checked at every drill:
 | A few records changed or deleted by mistake | `scripts/backup/restore-local.sh <dump>` → a local container with the newest dump before the mistake → read the rows → put them back through the app, or a reviewed SQL script that writes its own audit rows. **Production is not restored.** | < 1 h |
 | The database is damaged (a bad migration, a dropped table) but the project is fine | Supabase's own backup (≤ 7 days, the dashboard's Restore), or our newest hourly dump restored into the same project after `drop schema public, app, drizzle cascade`. Then migrate, flush the cache, re-run the day's jobs. | 1–3 h |
 | The Supabase project or account is gone | A new Supabase project in Singapore → extensions in `extensions` → restore the newest dump → point Vercel's `POSTGRES_URL` / `POSTGRES_URL_NON_POOLING` at it → redeploy (migrations run) → `pnpm cache:flush`. | 2–4 h |
-| Files are missing | `scripts/backup/restore-files.ts` from `suzu-files-backup` (current or the dated `deleted/` folder) back into `suzu-one-private`. The database still names them by key. | < 1 h |
+| Files are missing | `scripts/backup/restore-files.ts` from `suzu-one-files-backup` (current or the dated `deleted/` folder) back into `suzu-one-private`. The database still names them by key. | < 1 h |
 | Cloudflare is gone (account lost, R2 down for days) | The database is unaffected; the newest dump is on GCS if it is needed too. Files: a new S3-compatible bucket elsewhere (`R2_ENDPOINT` can point at any), `scripts/backup/restore-files.sh` copies and decrypts every object production's `stored_file` names from GCS `files/`, then change the storage variables in Vercel and redeploy. Files uploaded that day are lost. | 2–4 h |
 
 **Stopping writes during a full restore.** Today the runbook can only ask people to stop. The plan adds a `MAINTENANCE_MODE` environment switch (B3): the proxy shows every page as a "Đang bảo trì" page with a 503, and answers everything else, the cron included, with a bare 503 before anything runs. Setting it in Vercel and redeploying takes about two minutes.
@@ -188,7 +188,7 @@ All decided 2026-10-09: the owner took each recommendation.
 | D1 | Hourly dumps from GitHub Actions instead of the PITR add-on | **Yes.** It meets RPO ≤ 1 h and the year's retention for cents, and it survives losing Supabase. Revisit PITR when the database reaches several GB. |
 | D2 | Where the dump job runs | **GitHub Actions**, in the existing public repo: free minutes, already trusted for CI. Secrets sit in a GitHub *environment* `backups` restricted to `main`, so pull requests (forks included) never see them. Logs carry no data (§3.4). The alternative, a small VM, is one more machine to patch. |
 | D3 | Encrypt dumps with age, private key offline only | **Yes.** It is the only thing that makes a public-repo job and a leaked bucket token harmless. The cost is one more key that must never be lost. |
-| D4 | Backup buckets in the same Cloudflare account, with bucket locks | **Yes**: `suzu-backups` and `suzu-files-backup`. The locks protect against a leaked token. Losing the Cloudflare account is covered by the third copy on GCS (D8), not by these buckets. |
+| D4 | Backup buckets in the same Cloudflare account, with bucket locks | **Yes**: `suzu-one-backups` and `suzu-one-files-backup`. The locks protect against a leaked token. Losing the Cloudflare account is covered by the third copy on GCS (D8), not by these buckets. |
 | D5 | Add the `MAINTENANCE_MODE` switch | **Yes**, small (B3). Without it a full restore cannot stop writes. |
 | D6 | What the privacy notice says about backups | Backups keep a deleted or purged record for up to 13 months, then it is gone. After a restore the purge runs again. Add one sentence to the PDPL notice and the R5 privacy decisions. |
 | D7 | The 40 old Supabase Storage objects | Checked 2026-10-09: 6 share a path with a live file record in R2, 34 are named by no record. The nightly job's file check confirms each live record's object is in R2. Once that has passed, empty and delete the Supabase bucket `suzu-private` (Supabase → Storage). They sit outside every backup and every purge. |
@@ -200,7 +200,7 @@ All decided 2026-10-09: the owner took each recommendation.
 | Slice | What | Who |
 | --- | --- | --- |
 | **B0 — docs** | This plan; the `extensions` fix in restore.md. | done with this document |
-| **B1 — set-up** | Buckets `suzu-backups` (locks + lifecycle per §3.2) and `suzu-files-backup` (lock on `deleted/` for 400 days, lifecycle the same). R2 tokens: write for the job, read for the kit. A Google Cloud project `suzu-backups` with billing, the bucket `suzu-backups-gcs` in `asia-southeast1` (lifecycle per §2.1 and §2.2, retention 30 days, not yet locked), a Workload Identity pool trusting only `dinhkhanh/suzu.one`, environment `backups`, and a service account holding a custom role (`storage.objects.create`, `get`, `list`, `update`; no `delete`) on that bucket alone. Generate the age key pair: the public key becomes the `backups` environment's `AGE_RECIPIENT` variable, the private key goes into the kit. The `backup_reader` role (`scripts/backup/setup.sql`). GitHub environment `backups` with its secrets and variables. Two healthchecks.io checks. All of it, command by command: [backup.md](runbooks/backup.md#setting-it-up-owner-once-about-an-hour). | owner, ~1 h. The storage check is done (D7) |
+| **B1 — set-up** | Buckets `suzu-one-backups` (locks + lifecycle per §3.2) and `suzu-one-files-backup` (lock on `deleted/` for 400 days, lifecycle the same). R2 tokens: write for the job, read for the kit. A Google Cloud project `suzu-backups` with billing, the bucket `suzu-backups-gcs` in `asia-southeast1` (lifecycle per §2.1 and §2.2, retention 30 days, not yet locked), a Workload Identity pool trusting only `dinhkhanh/suzu.one`, environment `backups`, and a service account holding a custom role (`storage.objects.create`, `get`, `list`, `update`; no `delete`) on that bucket alone. Generate the age key pair: the public key becomes the `backups` environment's `AGE_RECIPIENT` variable, the private key goes into the kit. The `backup_reader` role (`scripts/backup/setup.sql`). GitHub environment `backups` with its secrets and variables. Two healthchecks.io checks. All of it, command by command: [backup.md](runbooks/backup.md#setting-it-up-owner-once-about-an-hour). | owner, ~1 h. The storage check is done (D7) |
 | **B2 — the job** | **Done.** `scripts/backup/`: `run.sh` (one run, as the workflow makes it), `dump.sh`, `check-dump.sh` (table of contents, or a full restore into a throwaway container and `verify.sql`), `files.sh` (incremental copies with tombstones and the coverage check), `restore-local.sh`, `restore-files.ts`, `setup.sql`, `gcs-lifecycle.json`. `.github/workflows/backup.yml` (hourly + nightly schedules, `workflow_dispatch`, environment `backups`, Workload Identity Federation). `tests/backup-verify.test.ts`. Tested end to end on the local demo database, a local S3 server and a stand-in for `gcloud`: dumps, checks that fail on stale or empty data, encryption, uploads, file copies, moves and tombstones, the coverage check, restores from both providers, and file restores with their download names. Not yet run against the real buckets: that needs B1. After a month of clean runs the owner locks the GCS retention policy. | done; the lock is the owner's |
 | **B3 — maintenance switch** | **Done.** `MAINTENANCE_MODE` in `env()`; the proxy (`src/proxy.ts`) shows `/maintenance` for every page with a 503 and `Retry-After`, and a bare 503 for everything else, before routing; the page reads nothing. `tests/proxy-maintenance.test.ts`; checked on a dev server. | done |
 | **B4 — runbooks** | **Done.** backup.md (what is kept, the kit, the set-up) and restore.md (every kind of restore, the drill) rewritten; incidents.md: the backup signal and "A backup check is red"; KEY_ROTATION.md: the age key; the privacy notice (sections 8 and 10, vi/en) and R5_PRIVACY_DECISIONS name the backups; INSPECTION NFR-OPS-02 updated. | done |

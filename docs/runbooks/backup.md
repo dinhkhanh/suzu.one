@@ -6,8 +6,8 @@ What is backed up, where, for how long, how you know it worked — and setting i
 
 | What | Where it lives | Copies | Kept |
 | --- | --- | --- | --- |
-| The database | Supabase, Singapore | Supabase's daily backup · R2 `suzu-backups` · Google Cloud `<gcs bucket>` | Supabase 7 days · hourly 3 days · daily 35 days · monthly 400 days |
-| Files | R2 `suzu-one-private` | R2 `suzu-files-backup` · Google Cloud `<gcs bucket>/files/` | while the file exists, then 400 days |
+| The database | Supabase, Singapore | Supabase's daily backup · R2 `suzu-one-backups` · Google Cloud `<gcs bucket>` | Supabase 7 days · hourly 3 days · daily 35 days · monthly 400 days |
+| Files | R2 `suzu-one-private` | R2 `suzu-one-files-backup` · Google Cloud `<gcs bucket>/files/` | while the file exists, then 400 days |
 | Field-encryption keys and the backup key | Vercel, and the restore kit (below) | the kit | as long as any backup they open |
 | Code and migrations | GitHub | git | — |
 
@@ -33,7 +33,7 @@ Without it no backup can be read. Keep it in the password manager, and a printed
 
 - the **age private key** (`AGE-SECRET-KEY-1…`);
 - `DATA_ENCRYPTION_KEYS` and `DATA_BLIND_INDEX_KEY`, including every old key a backup from the last 400 days may still need ([KEY_ROTATION.md](../KEY_ROTATION.md));
-- the R2 **read-only kit token** for `suzu-backups` and `suzu-files-backup`, and the Cloudflare account ID;
+- the R2 **read-only kit token** for `suzu-one-backups` and `suzu-one-files-backup`, and the Cloudflare account ID;
 - the names of the Google Cloud project and bucket;
 - the logins: Supabase, Vercel, Cloudflare, Google Cloud, GitHub.
 
@@ -59,27 +59,27 @@ Supabase → SQL Editor: run `scripts/backup/setup.sql` with a password of your 
 ### 3. Cloudflare R2
 
 ```sh
-npx wrangler r2 bucket create suzu-backups --location apac
-npx wrangler r2 bucket create suzu-files-backup --location apac
+npx wrangler r2 bucket create suzu-one-backups --location apac
+npx wrangler r2 bucket create suzu-one-files-backup --location apac
 # Keep each dump for its retention — not even the job's own token can delete it early — then let it go.
-npx wrangler r2 bucket lock add suzu-backups --name hourly --prefix hourly/ --retention-days 3
-npx wrangler r2 bucket lock add suzu-backups --name daily --prefix daily/ --retention-days 35
-npx wrangler r2 bucket lock add suzu-backups --name monthly --prefix monthly/ --retention-days 400
-npx wrangler r2 bucket lifecycle add suzu-backups --name hourly --prefix hourly/ --expire-days 3
-npx wrangler r2 bucket lifecycle add suzu-backups --name daily --prefix daily/ --expire-days 35
-npx wrangler r2 bucket lifecycle add suzu-backups --name monthly --prefix monthly/ --expire-days 400
+npx wrangler r2 bucket lock add suzu-one-backups --name hourly --prefix hourly/ --retention-days 3
+npx wrangler r2 bucket lock add suzu-one-backups --name daily --prefix daily/ --retention-days 35
+npx wrangler r2 bucket lock add suzu-one-backups --name monthly --prefix monthly/ --retention-days 400
+npx wrangler r2 bucket lifecycle add suzu-one-backups --name hourly --prefix hourly/ --expire-days 3
+npx wrangler r2 bucket lifecycle add suzu-one-backups --name daily --prefix daily/ --expire-days 35
+npx wrangler r2 bucket lifecycle add suzu-one-backups --name monthly --prefix monthly/ --expire-days 400
 # Files production deleted are moved under deleted/<date>/ and kept 400 days.
-npx wrangler r2 bucket lock add suzu-files-backup --name deleted --prefix deleted/ --retention-days 400
-npx wrangler r2 bucket lifecycle add suzu-files-backup --name deleted --prefix deleted/ --expire-days 400
+npx wrangler r2 bucket lock add suzu-one-files-backup --name deleted --prefix deleted/ --retention-days 400
+npx wrangler r2 bucket lifecycle add suzu-one-files-backup --name deleted --prefix deleted/ --expire-days 400
 ```
 
 Then Cloudflare dashboard → R2 → **Manage API tokens**, three tokens:
 
 | Token | Permission | Buckets | Goes to |
 | --- | --- | --- | --- |
-| `backup-job-write` | Object Read & Write | `suzu-backups`, `suzu-files-backup` | GitHub secrets `R2_BACKUP_KEY_ID` / `R2_BACKUP_SECRET` |
+| `backup-job-write` | Object Read & Write | `suzu-one-backups`, `suzu-one-files-backup` | GitHub secrets `R2_BACKUP_KEY_ID` / `R2_BACKUP_SECRET` |
 | `backup-job-files-read` | Object Read only | `suzu-one-private` | GitHub secrets `R2_FILES_READ_KEY_ID` / `R2_FILES_READ_SECRET` |
-| `backup-kit-read` | Object Read only | `suzu-backups`, `suzu-files-backup` | the restore kit |
+| `backup-kit-read` | Object Read only | `suzu-one-backups`, `suzu-one-files-backup` | the restore kit |
 
 ### 4. Google Cloud
 
@@ -140,9 +140,9 @@ for name in BACKUP_DATABASE_URL R2_BACKUP_KEY_ID R2_BACKUP_SECRET R2_FILES_READ_
 done
 gh variable set AGE_RECIPIENT --env backups --repo dinhkhanh/suzu.one --body 'age1…'
 gh variable set R2_ENDPOINT --env backups --repo dinhkhanh/suzu.one --body 'https://<cloudflare account id>.r2.cloudflarestorage.com'
-gh variable set BACKUP_BUCKET --env backups --repo dinhkhanh/suzu.one --body suzu-backups
+gh variable set BACKUP_BUCKET --env backups --repo dinhkhanh/suzu.one --body suzu-one-backups
 gh variable set FILES_BUCKET --env backups --repo dinhkhanh/suzu.one --body suzu-one-private
-gh variable set FILES_BACKUP_BUCKET --env backups --repo dinhkhanh/suzu.one --body suzu-files-backup
+gh variable set FILES_BACKUP_BUCKET --env backups --repo dinhkhanh/suzu.one --body suzu-one-files-backup
 gh variable set GCS_BUCKET --env backups --repo dinhkhanh/suzu.one --body '<bucket>'
 gh variable set GCP_WORKLOAD_IDENTITY_PROVIDER --env backups --repo dinhkhanh/suzu.one --body 'projects/<project number>/locations/global/workloadIdentityPools/github/providers/suzu-one'
 gh variable set GCP_SERVICE_ACCOUNT --env backups --repo dinhkhanh/suzu.one --body 'backup-writer@<project>.iam.gserviceaccount.com'
