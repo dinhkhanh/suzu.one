@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * there is nothing to see here.
  */
 export default async function MaintenancePage() {
-  if (env().MAINTENANCE_MODE !== "on") redirect("/");
+  if (!env().MAINTENANCE_MODE) redirect("/");
   const t = await getTranslations("maintenance");
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-canvas px-4 py-10">

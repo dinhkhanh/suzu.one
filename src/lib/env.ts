@@ -7,6 +7,13 @@ const csv = (value: string | undefined) =>
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 
+/**
+ * A switch typed by hand in Vercel's dashboard: on/off, true/false, 1/0, yes/no (any case) all
+ * read as meant, and an empty value is no value — a switch spelt another way must not be what
+ * stops every request (it did, 2026-10-09).
+ */
+export const booleanSetting = z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), z.stringbool().default(false));
+
 // Variable names follow the Vercel–Supabase integration, so production, previews and a laptop
 // running `vercel env pull` are configured by the same names (README, "Environment").
 const schema = z.object({
@@ -158,10 +165,10 @@ const schema = z.object({
   // what they would have. "enforce" sends the same policy as the enforcing header — after the
   // reports have been read; "off" sends neither.
   CSP_MODE: z.enum(["report-only", "enforce", "off"]).default("report-only"),
-  // Maintenance (docs/runbooks/restore.md): "on" closes the app while the database is restored.
-  // The proxy answers every request with 503 and a page that says so; nothing is read or written,
-  // and the scheduled jobs do not run. Set it in Vercel and redeploy, and the same to lift it.
-  MAINTENANCE_MODE: z.enum(["on", "off"]).default("off"),
+  // Maintenance (docs/runbooks/restore.md): on (true, 1) closes the app while the database is
+  // restored. The proxy answers every request with 503 and a page that says so; nothing is read or
+  // written, and the scheduled jobs do not run. Set it in Vercel and redeploy, and the same to lift it.
+  MAINTENANCE_MODE: booleanSetting,
   // Sentry's DSN, here only for that policy: the host the browser SDK posts to, and the endpoint
   // that takes violation reports, are both read off it. The SDK itself reads these names directly
   // (src/lib/observability), so any value passes here; one that is not a DSN is ignored.

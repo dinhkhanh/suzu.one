@@ -4,7 +4,7 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const settings = { MAINTENANCE_MODE: "off" as "on" | "off" };
+const settings = { MAINTENANCE_MODE: false };
 vi.mock("@/lib/env", () => ({
   env: () => ({ ...settings, CSP_MODE: "report-only", BETTER_AUTH_URL: "https://suzu.one", r2Endpoint: undefined, NEXT_PUBLIC_SENTRY_DSN: undefined, SENTRY_DSN: undefined }),
   isDevelopmentEnvironment: () => false,
@@ -17,7 +17,7 @@ const ask = (url: string, init: { method?: string; headers?: Record<string, stri
 const rewrittenTo = (response: Response) => response.headers.get("x-middleware-rewrite");
 
 beforeEach(() => {
-  settings.MAINTENANCE_MODE = "off";
+  settings.MAINTENANCE_MODE = false;
 });
 
 describe("maintenance mode", () => {
@@ -27,7 +27,7 @@ describe("maintenance mode", () => {
   });
 
   it("shows every page as the maintenance page, signed in or not, with a 503", () => {
-    settings.MAINTENANCE_MODE = "on";
+    settings.MAINTENANCE_MODE = true;
     for (const path of ["/today", "/people/123", "/sign-in", "/careers", "/"]) {
       const response = ask(`https://suzu.one${path}`, { headers: { ...PAGE, cookie: "better-auth.session_token=abc.def" } });
       expect(new URL(rewrittenTo(response)!).pathname).toBe("/maintenance");
@@ -38,7 +38,7 @@ describe("maintenance mode", () => {
   });
 
   it("answers everything else with a bare 503: actions, the router's fetches, the API, the cron, the health check", () => {
-    settings.MAINTENANCE_MODE = "on";
+    settings.MAINTENANCE_MODE = true;
     const requests = [
       ask("https://suzu.one/today", { method: "POST", headers: { ...PAGE, "next-action": "abc" } }),
       ask("https://suzu.one/today", { headers: { rsc: "1", accept: "text/x-component" } }),
