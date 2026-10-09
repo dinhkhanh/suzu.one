@@ -35,6 +35,10 @@
     "exportXlsx": "Excel (.xlsx)",
     "exportCsv": "CSV (.csv)"
   },
+  "maintenance": {
+    "title": "Đang bảo trì",
+    "body": "Hệ thống đang tạm dừng để bảo trì. Vui lòng quay lại sau ít phút."
+  },
   "signIn": {
     "title": "Đăng nhập",
     "subtitle": "Dùng tài khoản Google Workspace của công ty (suzu.vn hoặc suzu.group).",

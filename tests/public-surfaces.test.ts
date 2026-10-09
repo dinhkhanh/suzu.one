@@ -246,6 +246,12 @@ describe("which words a request is handed", () => {
     expect(messages.legal).toEqual(catalogue.legal);
   });
 
+  it("gives the maintenance page its two sentences and nothing of the app", async () => {
+    const messages = await messagesFor("maintenance", false);
+    expect(Object.keys(messages).sort()).toEqual([CONTROLS, "maintenance", THEME]);
+    for (const namespace of INTERNAL) expect(messages[namespace], namespace).toBeUndefined();
+  });
+
   it("gives the kiosk on the wall its screen's words and nothing of the app", async () => {
     const messages = await messagesFor("kiosk", false);
     expect(Object.keys(messages).sort()).toEqual([CONTROLS, "kiosk", THEME]);
@@ -274,7 +280,7 @@ describe("which words a request is handed", () => {
     // words wait for a session that exists.
     const messages = await messagesFor("app", false);
     for (const namespace of INTERNAL.filter((name) => name !== "recruit")) expect(messages[namespace], namespace).toBeUndefined();
-    expect(Object.keys(messages).sort()).toEqual(["app", "brands", CONTROLS, "kiosk", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
+    expect(Object.keys(messages).sort()).toEqual(["app", "brands", CONTROLS, "kiosk", "legal", "maintenance", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     // Recruitment only as far as the careers pages: no pipelines, no candidates, no scorecards.
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
     // And the page they were on is a redirect to sign-in, whose words are among the ones left.
@@ -285,7 +291,7 @@ describe("which words a request is handed", () => {
     for (const marker of [null, "", "unknown", "APP", "app-ish"]) {
       const messages = await messagesFor(marker);
       expect(JSON.stringify(messages), String(marker)).not.toContain('"payroll":');
-      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "brands", CONTROLS, "kiosk", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
+      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "brands", CONTROLS, "kiosk", "legal", "maintenance", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     }
   });
 

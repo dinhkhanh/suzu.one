@@ -7,6 +7,20 @@ import { publicSite } from "@/lib/site";
 import { routeRequest } from "@/lib/site-routing";
 import { previewRequestKind } from "@/modules/work/engine/preview";
 
+/** Where every page is sent while the app is closed for maintenance (`MAINTENANCE_MODE`). */
+const MAINTENANCE_PATH = "/maintenance";
+const MAINTENANCE_HEADERS = { "cache-control": "no-store", "retry-after": "600" };
+
+/**
+ * Whether a request is a person opening a page — the one kind maintenance answers with its page.
+ * The rest (actions, the client router's fetches, the API, the cron) get a bare 503.
+ */
+function opensPage(request: NextRequest): boolean {
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  if (request.nextUrl.pathname.startsWith("/api/") || request.headers.has("rsc")) return false;
+  return request.headers.get("sec-fetch-dest") === "document" || (request.headers.get("accept") ?? "").includes("text/html");
+}
+
 /** What every answer on a client's review link carries: never indexed, never stored, never a referrer (`next.config.ts`). */
 const REVIEW_LINK_HEADERS = { "cache-control": "private, no-store, max-age=0", "x-robots-tag": "noindex, nofollow, noarchive, nosnippet", "referrer-policy": "no-referrer" };
 
@@ -21,7 +35,9 @@ function pagePolicy(surface: string) {
 }
 
 /**
- * Four jobs, read off the host and the path and nothing else.
+ * Four jobs, read off the host and the path and nothing else — unless the app is closed for
+ * maintenance (`MAINTENANCE_MODE`, docs/runbooks/restore.md): then every page is the maintenance
+ * page and everything else a 503, before a session, a row or a job is touched.
  *
  * **Which domain this is.** With a public domain configured (PUBLIC_SITE_URL), it serves only the
  * review links, the careers pages and a home page of its own, and the app's domain sends those
@@ -57,6 +73,9 @@ function pagePolicy(surface: string) {
  */
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  // First, so that nothing — not the API routes that are let past below, not the cron — runs.
+  const maintenance = env().MAINTENANCE_MODE === "on";
+  if (maintenance && !opensPage(request)) return new NextResponse(null, { status: 503, headers: MAINTENANCE_HEADERS });
   const site = publicSite();
   const route = routeRequest({ host: request.headers.get("host") ?? request.nextUrl.host, pathname, publicHost: site?.host ?? null });
   if (route.kind === "pass") return NextResponse.next();
@@ -64,7 +83,7 @@ export function proxy(request: NextRequest) {
   // 308: a client's decision posted to an old address arrives as the POST it was.
   if (route.kind === "redirect") return NextResponse.redirect(new URL(`${route.path}${search}`, site!.origin), 308);
 
-  const served = route.kind === "public" && route.rewrite ? route.rewrite : pathname;
+  const served = maintenance ? MAINTENANCE_PATH : route.kind === "public" && route.rewrite ? route.rewrite : pathname;
   const surface = surfaceForPath(served);
   if (surface === "preview") {
     const purpose = request.headers.get("sec-purpose") ?? request.headers.get("purpose") ?? request.headers.get("x-moz");
@@ -83,6 +102,11 @@ export function proxy(request: NextRequest) {
     if (policy) response.headers.set(policy.name, policy.value);
     return response;
   };
+  if (maintenance) {
+    const response = withPolicy(NextResponse.rewrite(new URL(MAINTENANCE_PATH, request.url), { request: { headers }, status: 503 }));
+    for (const [name, value] of Object.entries(MAINTENANCE_HEADERS)) response.headers.set(name, value);
+    return response;
+  }
   if (served !== pathname) return withPolicy(NextResponse.rewrite(new URL(`${served}${search}`, request.url), { request: { headers } }));
 
   // The public surfaces have nobody signed in and never will: they check their own credential —

@@ -35,6 +35,10 @@
     "exportXlsx": "Excel (.xlsx)",
     "exportCsv": "CSV (.csv)"
   },
+  "maintenance": {
+    "title": "Down for maintenance",
+    "body": "The system is paused for maintenance. Please come back in a little while."
+  },
   "signIn": {
     "title": "Sign in",
     "subtitle": "Use your company Google Workspace account (suzu.vn or suzu.group).",
