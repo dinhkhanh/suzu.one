@@ -15,6 +15,13 @@ describe("what a call cost", () => {
     expect(costMicroUsd("claude-opus-5-5", { inputTokens: 1000, outputTokens: 1000, cacheReadTokens: 0, cacheWriteTokens: 0 })).toBe(24_000);
   });
 
+  it("prices a cache write for an hour at twice the input, and the rest of the writes at the five-minute rate", () => {
+    // Haiku 4.5: $1.25 a million for five minutes, $2 for an hour.
+    expect(costMicroUsd("claude-haiku-4-5", { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 10_000, cacheWriteHourTokens: 8000 })).toBe(2000 * 1.25 + 8000 * 2);
+    // An hour's share larger than the writes (a provider glitch) never prices more than the writes.
+    expect(costMicroUsd("claude-sonnet-5-5", { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 100, cacheWriteHourTokens: 500 })).toBe(400);
+  });
+
   it("rounds up, so a month of calls never sums to less than it cost", () => {
     expect(costMicroUsd("claude-haiku-4-5", { inputTokens: 0, outputTokens: 0, cacheReadTokens: 1, cacheWriteTokens: 0 })).toBe(1);
   });
@@ -27,6 +34,13 @@ describe("what a call cost", () => {
   it("keeps the provider's usage as non-negative integers, each kind apart", () => {
     expect(modelUsageOf({ input_tokens: 10, output_tokens: 2.4, cache_read_input_tokens: -1, cache_creation_input_tokens: "x" })).toEqual({ inputTokens: 10, outputTokens: 2, cacheReadTokens: 0, cacheWriteTokens: 0 });
     expect(modelUsageOf(null)).toEqual({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 });
+    expect(modelUsageOf({ input_tokens: 5, output_tokens: 1, cache_creation_input_tokens: 9000, cache_creation: { ephemeral_1h_input_tokens: 8500 } })).toEqual({
+      inputTokens: 5,
+      outputTokens: 1,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 9000,
+      cacheWriteHourTokens: 8500,
+    });
   });
 });
 

@@ -25,7 +25,7 @@ import { AGENT_SYSTEM, CLARIFY_TOOL, DECLINE_TOOL, isClarifyingQuestion, isUngro
 import type { Citation } from "../engine/answer";
 import type { HistoryMessage } from "../engine/history";
 import { NO_USAGE, type TokenUsage } from "../engine/limits";
-import { type CalledTool, firstStep, type ModelTier, type NextStep, nextStep, TURN_CEILINGS } from "../engine/tiers";
+import { type CalledTool, firstStep, type ModelTier, type NextStep, nextStep, PREFIX_CACHE_TTL, TURN_CEILINGS } from "../engine/tiers";
 import type { AgentCard, AgentStep, AgentToolOutcome, AiNotice, PageContext } from "../enums";
 import type { AgentDriver, AgentReply } from "./driver";
 import { askerFactsOf } from "./facts";
@@ -130,15 +130,23 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
   const turnId = randomUUID();
   const offered = toolsFor(input.registry ?? AGENT_TOOLS, input.user.principal, input.facts ?? (await askerFactsOf(input.user)));
   const byName = new Map(offered.map((tool) => [tool.name, tool]));
-  // The frozen prefix: rules, then the tools in a fixed order, cached together (FR-AGT-44).
+  // The frozen prefix: rules, then the tools in a fixed order, cached together (FR-AGT-44) for as
+  // long as the tier keeps it (`PREFIX_CACHE_TTL`).
   // `strict` only on the two tools that end a turn: the API takes at most 20 strict tools and a lead
   // is offered more than that. A data tool's arguments are parsed with its zod schema before it
   // runs, and a bad argument goes back to the model as an error.
-  const tools: Anthropic.Tool[] = [...offered.map((tool): Anthropic.Tool => ({ name: tool.name, description: tool.description, input_schema: inputSchemaOf(tool) })), CLARIFY, { ...DECLINE, cache_control: { type: "ephemeral" } }];
-  const system: Anthropic.TextBlockParam[] = [
-    { type: "text", text: AGENT_SYSTEM, cache_control: { type: "ephemeral" } },
-    { type: "text", text: turnContext({ today: input.today, locale: input.locale, askerName: input.user.person.fullName ?? "an employee", page: input.page ?? null }) },
-  ];
+  const dataTools = offered.map((tool): Anthropic.Tool => ({ name: tool.name, description: tool.description, input_schema: inputSchemaOf(tool) }));
+  const asked = turnContext({ today: input.today, locale: input.locale, askerName: input.user.person.fullName ?? "an employee", page: input.page ?? null });
+  const prefixOf = (tier: ModelTier): { tools: Anthropic.Tool[]; system: Anthropic.TextBlockParam[] } => {
+    const cache: Anthropic.CacheControlEphemeral = PREFIX_CACHE_TTL[tier] === "1h" ? { type: "ephemeral", ttl: "1h" } : { type: "ephemeral" };
+    return {
+      tools: [...dataTools, CLARIFY, { ...DECLINE, cache_control: cache }],
+      system: [
+        { type: "text", text: AGENT_SYSTEM, cache_control: cache },
+        { type: "text", text: asked },
+      ],
+    };
+  };
   const messages: Anthropic.MessageParam[] = [...input.history.map((message) => ({ role: message.role, content: message.content })), { role: "user", content: input.question }];
   const context: ToolContext = { user: input.user, today: input.today, locale: input.locale, turnId };
 
@@ -159,8 +167,9 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurn> {
     if (left < MIN_CALL_MS) return { ...spent, kind: "fallback", reason: "limited" };
     callsOnTier = step.tier === tier ? callsOnTier : 0;
     tier = step.tier;
+    const prefix = prefixOf(tier);
     const reply: AgentReply = await input.driver.send(
-      { tier, system, tools: step.withTools ? tools : null, messages: step.withTools ? messages : flattened(messages, toolNames), maxTokens: TURN_CEILINGS.outputTokens, timeoutMs: Math.min(left, CALL_TIMEOUT_MS) },
+      { tier, system: prefix.system, tools: step.withTools ? prefix.tools : null, messages: step.withTools ? messages : flattened(messages, toolNames), maxTokens: TURN_CEILINGS.outputTokens, timeoutMs: Math.min(left, CALL_TIMEOUT_MS) },
       { asker: input.user, turnId },
     );
     calls += 1;
