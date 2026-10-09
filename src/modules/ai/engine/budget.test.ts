@@ -13,6 +13,8 @@ describe("what a call cost", () => {
     // Sonnet 5.5: $2 / $10; Opus 5.5: $4 / $20.
     expect(costMicroUsd("claude-sonnet-5-5", { inputTokens: 3000, outputTokens: 500, cacheReadTokens: 0, cacheWriteTokens: 1000 })).toBe(6000 + 5000 + 2500);
     expect(costMicroUsd("claude-opus-5-5", { inputTokens: 1000, outputTokens: 1000, cacheReadTokens: 0, cacheWriteTokens: 0 })).toBe(24_000);
+    // Haiku 5.5: $0.10 / $0.50, a tenth of Haiku 4.5.
+    expect(costMicroUsd("claude-haiku-5-5", { inputTokens: 3000, outputTokens: 500, cacheReadTokens: 8000, cacheWriteTokens: 0 })).toBe(300 + 250 + 80);
   });
 
   it("prices a cache write for an hour at twice the input, and the rest of the writes at the five-minute rate", () => {

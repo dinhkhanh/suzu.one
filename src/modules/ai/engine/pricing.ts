@@ -16,6 +16,8 @@ export type ModelPrice = { input: number; output: number; cacheRead: number; cac
 export const PRICES_AS_OF = "2026-10-09";
 
 export const PRICES: Readonly<Record<string, ModelPrice>> = {
+  // Haiku 5.5's price for a prompt up to 100K tokens; an agent turn's prompt stays far below that.
+  "claude-haiku-5-5": { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125, cacheWriteHour: 0.2 },
   "claude-haiku-4-5": { input: 1, output: 5, cacheRead: 0.1, cacheWrite: 1.25, cacheWriteHour: 2 },
   "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5, cacheWriteHour: 4 },
   "claude-sonnet-5": { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5, cacheWriteHour: 4 },
