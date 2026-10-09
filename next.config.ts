@@ -19,7 +19,11 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: !!process.env.VERCEL },
   // Spreadsheet imports and a referral's CV (4 MB each) arrive through a server action with the
   // form's other fields; 4.5 MB is also all the hosting platform takes per request.
-  experimental: { serverActions: { bodySizeLimit: "4.5mb" } },
+  //
+  // `turbopackLazyDynamicImports` (development only): the editor, the face kiosk's runtimes and the
+  // other `import()`-ed screens are compiled when a browser first asks for them, not when the dev
+  // server starts.
+  experimental: { serverActions: { bodySizeLimit: "4.5mb" }, turbopackLazyDynamicImports: true },
   // The payslip PDF embeds a font it reads from disk at runtime (FR-PAY-32). Tracing a
   // `readFileSync` is best-effort, so the file is named here and copied into the deployment.
   outputFileTracingIncludes: {
