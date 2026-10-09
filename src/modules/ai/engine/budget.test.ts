@@ -13,6 +13,15 @@ describe("what a call cost", () => {
     // Sonnet 5.5: $2 / $10; Opus 5.5: $4 / $20.
     expect(costMicroUsd("claude-sonnet-5-5", { inputTokens: 3000, outputTokens: 500, cacheReadTokens: 0, cacheWriteTokens: 1000 })).toBe(6000 + 5000 + 2500);
     expect(costMicroUsd("claude-opus-5-5", { inputTokens: 1000, outputTokens: 1000, cacheReadTokens: 0, cacheWriteTokens: 0 })).toBe(24_000);
+    // Haiku 5.5: $0.10 / $0.50, a tenth of Haiku 4.5.
+    expect(costMicroUsd("claude-haiku-5-5", { inputTokens: 3000, outputTokens: 500, cacheReadTokens: 8000, cacheWriteTokens: 0 })).toBe(300 + 250 + 80);
+  });
+
+  it("prices a cache write for an hour at twice the input, and the rest of the writes at the five-minute rate", () => {
+    // Haiku 4.5: $1.25 a million for five minutes, $2 for an hour.
+    expect(costMicroUsd("claude-haiku-4-5", { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 10_000, cacheWriteHourTokens: 8000 })).toBe(2000 * 1.25 + 8000 * 2);
+    // An hour's share larger than the writes (a provider glitch) never prices more than the writes.
+    expect(costMicroUsd("claude-sonnet-5-5", { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 100, cacheWriteHourTokens: 500 })).toBe(400);
   });
 
   it("rounds up, so a month of calls never sums to less than it cost", () => {
@@ -27,6 +36,13 @@ describe("what a call cost", () => {
   it("keeps the provider's usage as non-negative integers, each kind apart", () => {
     expect(modelUsageOf({ input_tokens: 10, output_tokens: 2.4, cache_read_input_tokens: -1, cache_creation_input_tokens: "x" })).toEqual({ inputTokens: 10, outputTokens: 2, cacheReadTokens: 0, cacheWriteTokens: 0 });
     expect(modelUsageOf(null)).toEqual({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 });
+    expect(modelUsageOf({ input_tokens: 5, output_tokens: 1, cache_creation_input_tokens: 9000, cache_creation: { ephemeral_1h_input_tokens: 8500 } })).toEqual({
+      inputTokens: 5,
+      outputTokens: 1,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 9000,
+      cacheWriteHourTokens: 8500,
+    });
   });
 });
 

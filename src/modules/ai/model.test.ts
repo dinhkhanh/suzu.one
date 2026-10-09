@@ -98,6 +98,17 @@ describe("the chat driver's request", () => {
     expect(sent[0].body.output_config?.effort).toBeUndefined();
   });
 
+  it("asks Haiku 5.5 for low effort, which it takes", async () => {
+    settings.values.ANTHROPIC_MODEL_SIMPLE = "claude-haiku-5-5";
+    try {
+      await chatDriver().complete({ asker, question: "Liên hệ phòng Nhân sự thế nào?", passages: [passage], locale: "vi" });
+    } finally {
+      settings.values.ANTHROPIC_MODEL_SIMPLE = "claude-haiku-4-5";
+    }
+    expect(sent[0].body.model).toBe("claude-haiku-5-5");
+    expect(sent[0].body.output_config?.effort).toBe("low");
+  });
+
   it("names the workspace when the key is not scoped to one, and only then", async () => {
     await chatDriver().complete({ asker, question: "Liên hệ phòng Nhân sự thế nào?", passages: [passage], locale: "vi" });
     expect(sent[0].headers.get("anthropic-workspace-id")).toBeNull();

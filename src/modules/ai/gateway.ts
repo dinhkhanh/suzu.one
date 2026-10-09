@@ -4,7 +4,7 @@
 //  1. ADMITTED — the kill switch, the key, the company's month and the asker's day are checked
 //     first (`spend.ts`); a refusal returns a notice, and the caller answers the free way;
 //  2. SENT on the tier's model (D38) through the official SDK, with what that model accepts — effort
-//     is a setting Sonnet and Opus take and Haiku 4.5 rejects;
+//     is a setting Haiku 5.5, Sonnet and Opus take and Haiku 4.5 rejects;
 //  3. RECORDED with its tokens and its price, answer or refusal, before anything else happens.
 //
 // A provider that fails — a timeout, an overloaded API, a revoked key — is a notice too, never an
@@ -26,8 +26,8 @@ export function modelFor(tier: ModelTier): string {
   return tier === "simple" ? settings.ANTHROPIC_MODEL_SIMPLE : tier === "complex" ? settings.ANTHROPIC_MODEL_COMPLEX : settings.ANTHROPIC_MODEL;
 }
 
-/** Haiku 4.5 rejects `output_config.effort`; the Sonnet and Opus generations take it. */
-export const takesEffort = (model: string): boolean => !/haiku/iu.test(model);
+/** Haiku 4.5 rejects `output_config.effort`; Haiku 5.5 and the Sonnet and Opus generations take it. */
+export const takesEffort = (model: string): boolean => !/haiku-4/iu.test(model);
 
 /** What the purpose of a call is, as it is written down: "ask", "draft.eod", … */
 export type ModelPurpose = "ask" | "agent" | "draft.eod" | "draft.status" | "draft.handoff" | "eval";

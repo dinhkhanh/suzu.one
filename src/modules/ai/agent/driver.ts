@@ -37,7 +37,7 @@ export const claudeAgentDriver = (purpose: "agent" | "eval" = "agent"): AgentDri
       purpose,
       tier: call.tier,
       turnId,
-      // Low effort where the model takes it (Sonnet, Opus); Haiku 4.5 takes none and gets none.
+      // Low effort where the model takes it (Haiku 5.5, Sonnet, Opus); Haiku 4.5 takes none and gets none.
       effort: "low",
       timeoutMs: call.timeoutMs,
       request: { max_tokens: call.maxTokens, system: call.system, messages: call.messages, ...(call.tools ? { tools: call.tools } : {}) },

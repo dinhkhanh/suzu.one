@@ -90,9 +90,24 @@ export type ModelCallRecord = { personId: string; turnId?: string | null; purpos
  */
 export async function recordModelCall(record: ModelCallRecord, at: Date = new Date()): Promise<number> {
   const cost = costMicroUsd(record.model, record.usage);
+  // The row keeps every cache write in one count; the hour's dearer share is in the cost.
+  const { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens } = record.usage;
   await db()
     .insert(aiModelCall)
-    .values({ personId: record.personId, turnId: record.turnId ?? null, purpose: record.purpose, tier: record.tier, model: record.model, ...record.usage, costMicroUsd: cost, stopReason: record.stopReason, createdAt: at });
+    .values({
+      personId: record.personId,
+      turnId: record.turnId ?? null,
+      purpose: record.purpose,
+      tier: record.tier,
+      model: record.model,
+      inputTokens,
+      outputTokens,
+      cacheReadTokens,
+      cacheWriteTokens,
+      costMicroUsd: cost,
+      stopReason: record.stopReason,
+      createdAt: at,
+    });
   const budget = aiBudget().monthMicroUsd;
   if (cost > 0 && budget > 0) {
     const [row] = await monthToDateQuery(at);

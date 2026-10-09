@@ -11,6 +11,17 @@
 /** D38's three tiers: Haiku for simple work, Sonnet for complex turns, Opus for the hardest answers. */
 export type ModelTier = "simple" | "standard" | "complex";
 
+/**
+ * How long each tier's frozen prefix — the rules and the tool list — stays in the prompt cache
+ * (FR-AGT-44). Five minutes is the default and costs 1.25 × input to write; an hour costs 2 × and
+ * pays when the next turn on the same prefix comes 5–60 minutes later. Measured on production's
+ * first pilot day (2026-10-08): Haiku, which starts every turn, wrote its prefix afresh on 9 of 29
+ * calls and 7 of those came 5–60 minutes after the asker's last one — an hour turns them into reads
+ * and cuts its writes by about half. Sonnet's cold writes mostly came over an hour apart, where the
+ * dearer write buys nothing; Opus writes once and is never offered tools.
+ */
+export const PREFIX_CACHE_TTL: Readonly<Record<ModelTier, "5m" | "1h">> = { simple: "1h", standard: "5m", complex: "5m" };
+
 /** FR-AGT-42: per turn. */
 export const TURN_CEILINGS = {
   /** Model calls in one turn, every tier together. */

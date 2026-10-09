@@ -524,6 +524,15 @@ describe("the agent reads as the asker (Phase 13 R1)", () => {
     expect(attendanceResult).toMatchObject({ tool: "my_attendance", outcome: "answered", lateCount: 3 });
     // Two modules in one turn: the second call is Sonnet's (D38).
     expect(driver.calls.map((call) => call.tier)).toEqual(["simple", "standard"]);
+    // Each tier caches the same frozen prefix for its own time (FR-AGT-44): Haiku's for an hour.
+    const markers = (call: (typeof driver.calls)[number]) => [call.tools?.at(-1)?.cache_control, call.system[0].cache_control];
+    expect(markers(driver.calls[0])).toEqual([
+      { type: "ephemeral", ttl: "1h" },
+      { type: "ephemeral", ttl: "1h" },
+    ]);
+    expect(markers(driver.calls[1])).toEqual([{ type: "ephemeral" }, { type: "ephemeral" }]);
+    expect(driver.calls[1].system.map((block) => block.text)).toEqual(driver.calls[0].system.map((block) => block.text));
+    expect(driver.calls[1].system[1].cache_control).toBeUndefined();
     for (const figure of FIGURES) expect(outbound(driver.calls)).not.toContain(figure);
   });
 
