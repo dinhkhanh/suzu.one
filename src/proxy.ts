@@ -74,7 +74,7 @@ function pagePolicy(surface: string) {
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   // First, so that nothing — not the API routes that are let past below, not the cron — runs.
-  const maintenance = env().MAINTENANCE_MODE === "on";
+  const maintenance = env().MAINTENANCE_MODE;
   if (maintenance && !opensPage(request)) return new NextResponse(null, { status: 503, headers: MAINTENANCE_HEADERS });
   const site = publicSite();
   const route = routeRequest({ host: request.headers.get("host") ?? request.nextUrl.host, pathname, publicHost: site?.host ?? null });
