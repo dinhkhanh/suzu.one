@@ -1,5 +1,28 @@
 {
   "enabledPlugins": {
     "upstash@upstash": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(python3 -)",
+      "Bash(pnpm -s tsc --noEmit -p .)",
+      "Bash(pnpm typecheck *)",
+      "Bash(npx eslint *)",
+      "Bash(git fetch *)",
+      "Bash(git ls-remote *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git merge *)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__claude_ai_Vercel__edit_project_env",
+      "mcp__claude_ai_Vercel__list_projects",
+      "Bash(vercel *)",
+      "Bash(printf *)",
+      "Bash(git pull *)",
+      "Bash(*)"
+    ]
   }
 }
