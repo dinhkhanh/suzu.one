@@ -36,3 +36,17 @@ Read `docs/SRS.md` (requirements, decisions D1–D18) and `docs/DEVELOPMENT_PLAN
 Run `pnpm check` — it starts with the Prettier check; `pnpm format` fixes what it finds. New permissions or roles need cases in `policy.test.ts`. New sign-in rules need cases in `sign-in-policy.test.ts`.
 
 Then read back every read the change added, against the two questions above: reference data through `cached()` with its writers invalidating, and counting, grouping and per-id lookups in SQL rather than in JS. A feature built with bare queries is unfinished work, not a follow-up.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `dinhkhanh/suzu.one`, through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: a root `CONTEXT.md` plus `docs/adr/`, alongside the numbered decisions in `docs/SRS.md`. See `docs/agents/domain.md`.
