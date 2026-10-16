@@ -241,22 +241,10 @@ export const attendanceDevice = pgTable(
       .notNull()
       .references(() => deviceMappingProfile.id),
     isActive: boolean("is_active").notNull().default(true),
-    // No longer read or written (16 Oct 2026): they served a clock that sent its own punches, the
-    // NAS face kiosk, retired for the kiosk in the app. Left in place because a column is dropped in
-    // a later release than the one that stops using it (docs/runbooks/rollback.md); a migration
-    // then drops these three and `attendance_device_push_token_key`.
-    pushTokenHash: text("push_token_hash"),
-    pushTokenIssuedAt: timestamp("push_token_issued_at", { withTimezone: true }),
-    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    unique("attendance_device_entity_name_key").on(t.entityId, t.name),
-    uniqueIndex("attendance_device_push_token_key")
-      .on(t.pushTokenHash)
-      .where(sql`${t.pushTokenHash} is not null`),
-  ],
+  (t) => [unique("attendance_device_entity_name_key").on(t.entityId, t.name)],
 ).enableRLS();
 
 // The other entities a clock serves: one office shared by several entities has one kiosk at its
