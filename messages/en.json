@@ -4672,7 +4672,7 @@
         "change": "Change poster",
         "remove": "Remove poster",
         "saving": "Uploading…",
-        "hint": "JPG, PNG or WebP, up to 50 MB. It is cropped to a square from the centre and resized before upload."
+        "hint": "JPG, PNG or WebP, up to 50 MB. It is cropped to a square from the centre and shrunk into a preview — attach the original file to the project."
       },
       "teamColor": "The team's colour",
       "openTasks": "Open tasks",

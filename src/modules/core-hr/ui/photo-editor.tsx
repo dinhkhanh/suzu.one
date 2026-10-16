@@ -26,7 +26,7 @@ export function PhotoEditor({ person, compact = false }: { person: { id: string;
     startTransition(async () => {
       if (file.size > MAX_FILE_BYTES) return setErrorKey("file_too_large");
       // Square, cut a little above the middle, where a portrait's face usually is.
-      const picture = await squarePicture(file, { edge: PHOTO_EDGE_PX, name: "photo.jpg", top: 1 / 3 });
+      const picture = await squarePicture(file, { edge: PHOTO_EDGE_PX, name: "photo", top: 1 / 3 });
       if (!picture) return setErrorKey("photo_unreadable");
       const result = await uploadThroughSignedUrl(
         picture,

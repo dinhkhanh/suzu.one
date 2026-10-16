@@ -74,12 +74,17 @@ export const PHOTO_EDGE_PX = 1024;
 const PHOTO_FILE_TYPES: readonly FileType[] = ALLOWED_FILE_TYPES.filter((type) => type.contentType.startsWith("image/")).map((type) => ({ ...type, maxBytes: MAX_PHOTO_BYTES }));
 
 /**
- * A project's poster or key visual, shown beside its name in lists and headers. Pictures only; like
- * a profile picture, the browser crops it to a square from the centre and shrinks it before upload.
+ * A project's poster: a preview shown beside its name in lists and headers, not a copy anyone
+ * downloads — the key visual itself is attached to the project as a file, kept as it was uploaded.
+ * Pictures only; like a profile picture, the browser crops it to a square from the centre and
+ * shrinks it before upload.
  */
 export const POSTER_OWNER_TYPE = "work_project_poster";
-/** The side of the square poster the browser uploads. */
-export const POSTER_EDGE_PX = 1024;
+/**
+ * The side of the square poster the browser uploads: twice the largest box it is shown in (56 px,
+ * `ProjectPoster`'s `lg`), sharp on a 2× screen and nothing larger. Grow it with that box.
+ */
+export const POSTER_EDGE_PX = 2 * 56;
 
 /**
  * A file of a brand kit (FR-BRD-02): what a designer hands a partner — the logo as a vector (SVG,

@@ -5,7 +5,11 @@ import { initialsOf } from "@/lib/text";
 /** Where a project's current poster is served; null without one. */
 export const posterUrlOf = (project: { id: string; posterFileId?: string | null }): string | null => (project.posterFileId ? `/api/work/projects/${project.id}/poster/${project.posterFileId}` : null);
 
-/** A project's poster as a rounded square beside its name, or its initials when it has none. */
+/**
+ * A project's poster as a rounded square beside its name, or its initials when it has none. `lg`
+ * (56 px) is the largest box a poster is shown in: the uploaded picture is twice that
+ * (`POSTER_EDGE_PX`), so a larger box here needs a larger upload there.
+ */
 export function ProjectPoster({ project, size = "default", className }: { project: { id: string; name: string; posterFileId?: string | null }; size?: "sm" | "default" | "lg"; className?: string }) {
   const src = posterUrlOf(project);
   return (
