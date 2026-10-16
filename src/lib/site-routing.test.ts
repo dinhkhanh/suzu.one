@@ -66,7 +66,8 @@ describe("routeRequest", () => {
       expect(on("suzu.one", "/api/auth/callback/google")).toEqual({ kind: "pass" });
       expect(on("suzu.one", "/api/messenger/webhook")).toEqual({ kind: "pass" });
       expect(on("suzu.one", "/api/telegram/webhook")).toEqual({ kind: "pass" });
-      expect(on("suzu.one", "/api/attendance/device/punches")).toEqual({ kind: "pass" });
+      // The NAS face kiosk's push endpoint is gone: its path is an ordinary app path now.
+      expect(on("suzu.one", "/api/attendance/device/punches")).toEqual({ kind: "app" });
       expect(on("suzu.one", "/api/attendance/devices")).toEqual({ kind: "app" });
       expect(on("suzu.one", "/api/kiosk/punch")).toEqual({ kind: "pass" });
       expect(on("suzu.one", "/api/health")).toEqual({ kind: "pass" });

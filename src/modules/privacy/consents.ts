@@ -2,7 +2,7 @@
 // withdrawn there too, and the face kiosk's withdrawals. Consent is personal data about a choice
 // the person can change at any moment, so nothing here is cached: the check-in reads it fresh.
 import "server-only";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { createTranslator } from "next-intl";
 import { db, schema, type Tx } from "@/lib/db";
 import en from "../../../messages/en.json";
@@ -54,28 +54,6 @@ export async function recordConsentEvent(
 /** A GPS answer with the current notice in the reader's language. */
 export function recordGpsAnswer(personId: string, decision: "given" | "declined", locale: string, executor: Executor = db()): Promise<ConsentEventRow> {
   return recordConsentEvent({ personId, purpose: "gps_check_in", decision, notice: { version: GPS_NOTICE_VERSION, locale: locale === "en" ? "en" : "vi", text: gpsNoticeText(locale) } }, executor);
-}
-
-/**
- * Which of these people withdrew their consent to face check-in and have not been enrolled again
- * since (a new enrolment needs a newly signed form, which moves `face_enrolment.consent_at` past the
- * withdrawal). The NAS kiosk's roster leaves them out, so the NAS stops recognising them at its next
- * sync and deletes their faces by its own purge (docs/privacy). One query for the whole roster.
- */
-export async function faceWithdrawnAmong(personIds: readonly string[], executor: Executor = db()): Promise<Set<string>> {
-  if (personIds.length === 0) return new Set();
-  const latest = executor
-    .selectDistinctOn([schema.privacyConsentEvent.personId], { personId: schema.privacyConsentEvent.personId, decision: schema.privacyConsentEvent.decision, at: schema.privacyConsentEvent.at })
-    .from(schema.privacyConsentEvent)
-    .where(and(eq(schema.privacyConsentEvent.purpose, "face_check_in"), inArray(schema.privacyConsentEvent.personId, [...personIds])))
-    .orderBy(schema.privacyConsentEvent.personId, desc(schema.privacyConsentEvent.at), desc(schema.privacyConsentEvent.id))
-    .as("latest");
-  const rows = await executor
-    .select({ personId: latest.personId })
-    .from(latest)
-    .leftJoin(schema.faceEnrolment, eq(schema.faceEnrolment.personId, latest.personId))
-    .where(and(eq(latest.decision, "withdrawn"), sql`(${schema.faceEnrolment.consentAt} is null or ${schema.faceEnrolment.consentAt} <= ${latest.at})`));
-  return new Set(rows.map((row) => row.personId));
 }
 
 /** Every answer the person ever gave, newest first — for their own export. */

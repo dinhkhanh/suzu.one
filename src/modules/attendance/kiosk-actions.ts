@@ -150,8 +150,8 @@ const withdrawPipeline = createAction({
   authorize: (user) => !user.impersonator,
   run: async ({ user }) => {
     const deleted = await deleteFaces(user.person.id);
-    // Kept as a fact, since the consent record went with the faces: the NAS kiosk's roster leaves
-    // the person out from now on (`deviceRoster`), so the NAS deletes its own copy too.
+    // Kept as a fact, since the consent record went with the faces: the proof of the withdrawal
+    // (Law 91), listed in the person's own data export.
     await recordConsentEvent({ personId: user.person.id, purpose: "face_check_in", decision: "withdrawn" });
     refresh();
     revalidatePath("/me");

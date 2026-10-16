@@ -5,14 +5,13 @@ import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, T
 import { exportUnmappedAction } from "@/modules/attendance/device-actions";
 import { getDevice, listUnmapped, listUserMap, servedEntityIds } from "@/modules/attendance/devices";
 import { canManageDevices } from "@/modules/attendance/policy";
-import { BulkMapForm, MapUserForm, PushTokenPanel, UnmapButton } from "@/modules/attendance/ui/device-forms";
+import { BulkMapForm, MapUserForm, UnmapButton } from "@/modules/attendance/ui/device-forms";
 import { listEmploymentFacts } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { can } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
-import { appOrigin } from "@/lib/site";
 import { RecordLink } from "@/components/ui/record-link";
 
 export const generateMetadata = pageTitle("deviceUsers");
@@ -97,16 +96,6 @@ export default async function DeviceUsersPage({ params }: PageProps<"/attendance
       <section className="flex flex-col gap-3">
         <h3 className="text-sm font-medium text-muted-foreground">{t("map.bulkTitle")}</h3>
         <BulkMapForm deviceId={id} />
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h3 className="text-sm font-medium text-muted-foreground">{t("push.title")}</h3>
-        {device.pushTokenHash ? (
-          <p className="text-sm">
-            {t("push.issuedAt", { at: when(device.pushTokenIssuedAt!) })} · {device.lastSeenAt ? t("push.lastSeen", { at: when(device.lastSeenAt) }) : t("push.neverSeen")}
-          </p>
-        ) : null}
-        <PushTokenPanel deviceId={id} hasToken={!!device.pushTokenHash} appOrigin={appOrigin()} />
       </section>
     </div>
   );

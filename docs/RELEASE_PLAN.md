@@ -133,7 +133,7 @@ Nothing else in this plan is worth doing on a system that cannot be restored.
 - [ ] **0.8 Environment audit** in Vercel (Production), names only: everything in §A1 of the appendix set; `STEP_UP_DRIVER=google`; `STORAGE_BUCKET` set explicitly (the code default `suzu-private` and `.env.example`'s `suzu-one-private` disagree); `SENTRY_ENVIRONMENT=production`; nothing production-valued ticked for **Preview**.
 - [ ] **0.9 Sentry hygiene**: the developer machine must not report as `production` (ENG-07) — `SENTRY_ENVIRONMENT=development` in the local file, then resolve the old local noise.
 - [ ] **0.10 Step-up and email, by hand**: open a payroll page in production (the Google step-up driver has never been confirmed); send one candidate letter to yourself (Resend + the offer PDF).
-- [ ] **0.11 NAS face kiosk**: set `PURGE_INACTIVE_DAYS=0` on it today; switch it off in W3 once every wall tablet runs `/attendance/kiosk` (`privacy/R5_PRIVACY_DECISIONS.md` §3).
+- [ ] **0.11 NAS face kiosk**: removed from the app on 16 Oct; face check-in is the in-app kiosk alone. On the NAS, stop and delete the `face-kiosk` project and delete its face store **now** — since the production reset it cannot sync, so its own purge no longer runs (`privacy/R5_PRIVACY_DECISIONS.md` §3, steps 1–4).
 
 **Seed / load** — `scripts/seed.ts` (0.1) and the manual (0.1). Nothing else.
 
@@ -229,7 +229,7 @@ The first locked month is the foundation of payroll: no locked month, no paralle
 - [ ] **3.3 Locations** — `/attendance/settings/locations`: each office's real coordinates, radius and public IP(s).
 - [ ] **3.4 Attendance policy per entity** — `/attendance/settings/policy`: grace, rounding, OT rules, monthly correction cap (default 3), whether corrections or holiday work need an HR step (`MVP_STATUS.md` §4.E). From Phase 12 on, HR's saves become **proposals the owner approves** at `/approvals/rule/[id]`.
 - [ ] **3.5 Clocks (Q5)** — name the device models; import one real export at `/attendance/devices/import` and adjust the mapping profile; map each device user id to a person. Until Q5 is settled the file import is the way.
-- [ ] **3.6 Face kiosk** — open `/attendance/kiosk` on each wall tablet (modern device; iPadOS 17.0 is not supported); everyone re-enrols (SFace templates are not the NAS's); record face consent. Then **switch off the NAS kiosk** and delete its face store (`R5_PRIVACY_DECISIONS.md` §3).
+- [ ] **3.6 Face kiosk** — open `/attendance/kiosk` on each wall tablet (modern device; iPadOS 17.0 is not supported); everyone re-enrols ; record face consent. (The NAS kiosk is gone: 0.11.)
 - [ ] **3.7 Leave types and policies** — `/leave/admin/types`: the 11 seeded types reviewed by HR against the company handbook (annual days, carry-over, `COMP` kept — a lock carrying time off in lieu fails without it). Saves are proposals for the owner.
 - [ ] **3.8 Leave opening balances** — `/leave/admin/import` (Mã NV, Loại phép, Năm, Số ngày còn lại, Tính đến ngày) **as of 1 October**, checked by HR per entity.
 - [ ] **3.9 The October lock** — by Mon 2 Nov each person confirms their month, leads approve, HR locks per entity (FR-PAY-30: locked by the 2nd). Use **Recompute** on the team timesheet before locking if a policy changed during the month.

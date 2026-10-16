@@ -61,7 +61,7 @@ In order. The merge itself runs migrations 0115–0133 against production before
    - For the minutes of the rollout, code still running from `main` shows a few new stored rows (time-off-in-lieu ledger lines, retro items) as raw `i18n:{…}` keys. They read correctly once the deploy completes.
    - From the deploy on, HR's leave-type, leave-policy and attendance-policy saves become proposals that wait for the owner (`/approvals/rule/[id]`).
 10. **Privacy steps the code cannot take** (`docs/privacy/R5_PRIVACY_DECISIONS.md`):
-   - Decommission the NAS face kiosk (§3). Until then, set `PURGE_INACTIVE_DAYS=0` on it.
+   - Decommission the NAS face kiosk (§3). Done in the app on 16 Oct 2026; its data on the NAS is still to delete (`R5_PRIVACY_DECISIONS.md` §3).
    - Record Cloudflare (Workers AI, R2) as a processor and confirm its DPA.
    - Update the public privacy policy text (`legal.privacy`) with the retention periods and the GPS notice.
    - Decide on virus scanning (§5 of that file recommends accepting the risk now and adding ClamAV before the careers page draws volume).
@@ -289,7 +289,7 @@ Everything on the branch passed `pnpm check` (unit, PGlite integration, migratio
   - Workers AI with redaction;
   - a Claude driver with a real key.
 - **The migrations against production's data.** 0115–0133 were applied to fresh and test databases only. 0123, 0126 and 0128 change keys and constraints; read them before the merge.
-- **The kiosk** after the lifetime change, on a real tablet. **The NAS kiosk** roster change against the running NAS.
+- **The kiosk** after the lifetime change, on a real tablet. ~~The NAS kiosk roster change against the running NAS~~ — the NAS kiosk was removed on 16 Oct 2026.
 - **The .xlsx files** were opened with openpyxl only, never in Excel, Numbers or Google Sheets.
 - **Bank and statutory files.** The ACB interbank row and every layout are still assumed.
 

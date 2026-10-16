@@ -1,11 +1,9 @@
 // The rate limiter of the endpoints nobody signs in to (NFR-SEC-03): a kiosk tablet's
-// `/api/kiosk/*`, counted per kiosk session, and a clock's `/api/attendance/device/*`, counted per
-// clock. The limits and the window arithmetic are `engine/rate-limit.ts`; this is the one table
+// `/api/kiosk/*`, counted per kiosk session. The limits and the window arithmetic are `engine/rate-limit.ts`; this is the one table
 // and the one statement behind them.
 //
-// A call is counted **after** it has shown its credential, under the session or the clock that
-// credential belongs to: a request with no kiosk or clock behind it is refused before it gets
-// here, so a stranger cannot fill the table with keys of their own invention.
+// A call is counted **after** it has shown its credential, under the session that credential
+// belongs to: a request with no kiosk behind it is refused before it gets here, so a stranger cannot fill the table with keys of their own invention.
 import "server-only";
 import { createHash } from "node:crypto";
 import { lt, sql } from "drizzle-orm";
@@ -15,7 +13,7 @@ import { ENDPOINT_LIMITS, type EndpointBucket, retryAfterSeconds, windowStartFor
 export type EndpointLimitOutcome = { ok: true } | { ok: false; retryAfterSeconds: number };
 
 /** What a caller is counted under: a hash of its kind and id, so the table names nothing. */
-export const endpointKey = (kind: "kiosk" | "device", id: string): string => createHash("sha256").update(`${kind}:${id}`).digest("hex").slice(0, 32);
+export const endpointKey = (kind: "kiosk", id: string): string => createHash("sha256").update(`${kind}:${id}`).digest("hex").slice(0, 32);
 
 /**
  * Counts one call and says whether it is allowed: one row per (bucket, key, window), one atomic

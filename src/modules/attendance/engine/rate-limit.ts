@@ -1,5 +1,5 @@
 // Rate limiting for the endpoints nobody signs in to (NFR-SEC-03): a kiosk tablet's
-// `/api/kiosk/*` and a clock's `/api/attendance/device/*`. Pure: the arithmetic of a fixed window,
+// `/api/kiosk/*`. Pure: the arithmetic of a fixed window,
 // with no database and no clock of its own — the careers page's mechanism
 // (`recruit/engine/rate-limit.ts`), in this module's own words because a module reaches another
 // only through its service.
@@ -28,10 +28,6 @@ export const ENDPOINT_LIMITS = {
   kiosk_undo: { max: 10, windowSeconds: 60 },
   /** The QR codes: half an hour of them per call, asked for twice an hour and every 30 seconds while offline. */
   kiosk_qr: { max: 20, windowSeconds: 60 },
-  /** A clock's own punches (tools/face-kiosk): a post per punch at the door, a heartbeat otherwise. */
-  device_punches: { max: 60, windowSeconds: 60 },
-  /** A clock's roster: fetched now and then, and when HR presses "sync" on it. */
-  device_roster: { max: 12, windowSeconds: 60 },
 } as const satisfies Record<string, RateLimit>;
 
 export type EndpointBucket = keyof typeof ENDPOINT_LIMITS;

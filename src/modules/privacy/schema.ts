@@ -6,7 +6,7 @@ import { person } from "../platform/people/schema";
 
 // What a notice is about. GPS at check-in is a notice the person answers in the app; face check-in
 // is consented to on a signed paper form that HR records on `face_enrolment` — its rows here are
-// only the person's own withdrawals, which the NAS kiosk's roster reads (`faceWithdrawnAmong`).
+// only the person's own withdrawals, the proof Law 91 asks for, which their data export lists.
 export const privacyPurpose = pgEnum("privacy_purpose", ["gps_check_in", "face_check_in"]);
 export const privacyDecision = pgEnum("privacy_decision", ["given", "declined", "withdrawn"]);
 

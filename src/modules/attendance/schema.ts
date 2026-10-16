@@ -241,11 +241,12 @@ export const attendanceDevice = pgTable(
       .notNull()
       .references(() => deviceMappingProfile.id),
     isActive: boolean("is_active").notNull().default(true),
-    // A clock that sends its punches itself (the face kiosk, tools/face-kiosk): SHA-256 of the
-    // token it presents. The token is shown once when issued and never stored.
+    // No longer read or written (16 Oct 2026): they served a clock that sent its own punches, the
+    // NAS face kiosk, retired for the kiosk in the app. Left in place because a column is dropped in
+    // a later release than the one that stops using it (docs/runbooks/rollback.md); a migration
+    // then drops these three and `attendance_device_push_token_key`.
     pushTokenHash: text("push_token_hash"),
     pushTokenIssuedAt: timestamp("push_token_issued_at", { withTimezone: true }),
-    // The last time the clock called in, punches or not: HR sees a kiosk that has gone quiet.
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -391,14 +392,14 @@ export const kioskSession = pgTable(
 ).enableRLS();
 
 // The rate limiter of the endpoints nobody signs in to (NFR-SEC-03): a kiosk tablet's
-// `/api/kiosk/*` and a clock's `/api/attendance/device/*`. One row per (bucket, key, window) and
-// one atomic upsert — the careers page's mechanism, in this module's own table
-// (`endpoint-limit.ts`). `key_hash` is a hash of the kiosk session or the clock, never a token.
+// `/api/kiosk/*`. One row per (bucket, key, window) and one atomic upsert — the careers page's
+// mechanism, in this module's own table (`endpoint-limit.ts`). `key_hash` is a hash of the kiosk
+// session, never a token.
 export const attendanceEndpointHit = pgTable(
   "attendance_endpoint_hit",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    // What was counted: "kiosk_identify", "kiosk_punch", "device_punches"… See `ENDPOINT_LIMITS`.
+    // What was counted: "kiosk_identify", "kiosk_punch"… See `ENDPOINT_LIMITS`.
     bucket: text("bucket").notNull(),
     keyHash: text("key_hash").notNull(),
     windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
