@@ -57,17 +57,17 @@ The audit log is append-only and is not touched. Each anonymisation is recorded 
 - The server enforces the answer. `punchAction` drops any position the phone sends unless the latest answer is "given" to the current notice. Without a position, an office network still counts; otherwise the check-in goes to the manager for review.
 - This is consent under Law 91/2025 for location, which is sensitive personal data (SRS NFR-PRV-01, 02). The notice repeats that the position is read once, at the tap, and is never tracked.
 
-## 3. Face data and the NAS face store
+## 3. Face data and the NAS face store (decommissioned)
 
 - In the app: the face consent is the signed paper form that HR records at enrolment (`face_enrolment`). R4-E added self-service withdrawal. Withdrawing now also writes a `face_check_in / withdrawn` row in `privacy_consent_event`.
-- **The NAS kiosk** (`tools/face-kiosk`, superseded by the in-app kiosk) keeps its own SQLite store (`data/kiosk.db`) with face embeddings and its own consent dates. Its only link to SuZu One is the device roster (`GET /api/attendance/device/roster`). **That roster now leaves out people who have left (`offboarded`) and people who withdrew face consent and were not enrolled again since.** At its next sync (every 10 minutes) the NAS stops recognising them. It then deletes their faces after `PURGE_INACTIVE_DAYS`, which defaults to 30.
-- **Decision: decommission the NAS kiosk.** Nothing in the app needs it. Its store is a second copy of biometric data that sits outside the app's purge and outside its backups policy. Steps (infrastructure, not code):
-  1. In SuZu One, under Attendance → Time clocks, open the NAS kiosk device and revoke its push token. Then deactivate the device.
-  2. On the NAS, under Container Manager → Project `face-kiosk`, stop the project and delete it.
-  3. Delete `/volume1/docker/face-kiosk/data/` (`kiosk.db` and its WAL files) and the `.env`.
-  4. Delete any Hyper Backup versions that contain that folder, or let them expire. Check the backup task's retention.
-  5. Record the date in the processing register.
-- Until then, set `PURGE_INACTIVE_DAYS=0` in `docker-compose.yml`, so the NAS deletes a leaver's or a withdrawing person's faces at the next roster sync instead of 30 days later.
+- **The NAS kiosk** (`tools/face-kiosk`, superseded by the in-app kiosk) kept its own SQLite store (`data/kiosk.db`) with face embeddings and its own consent dates. Its only link to SuZu One was the device push API: a roster (`GET /api/attendance/device/roster`) that left out leavers and withdrawn consents, so the NAS stopped recognising them and purged their faces after `PURGE_INACTIVE_DAYS`, and the punches it posted.
+- **Decision: decommission the NAS kiosk.** Nothing in the app needs it. Its store is a second copy of biometric data that sits outside the app's purge and outside its backups policy.
+- **16 October 2026 — removed from the app.** Face check-in runs on the in-app kiosk alone. The container's code (`tools/face-kiosk`), the push and roster endpoints, the device token and its screen are gone (PR "The NAS face kiosk is gone"); the three `attendance_device` columns it used (`push_token_hash`, `push_token_issued_at`, `last_seen_at`) are no longer read or written and are dropped by a later migration. The production reset of the same day had already removed the NAS's device and token, so since then every call it makes is refused (401) — **which also means it can no longer sync a roster, so its own purge no longer removes anybody: the faces it holds stay until its data is deleted by hand.**
+- **Still to do on the NAS** (infrastructure, owner):
+  1. Container Manager → Project `face-kiosk`: stop the project and delete it.
+  2. Delete `/volume1/docker/face-kiosk/data/` (`kiosk.db` and its WAL files) and the `.env`.
+  3. Delete any Hyper Backup versions that contain that folder, or let them expire. Check the backup task's retention.
+  4. Record the date in the processing register.
 
 ## 4. Knowledge-base embeddings (Cloudflare Workers AI)
 

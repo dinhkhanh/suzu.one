@@ -1,5 +1,5 @@
-// The privacy tools against a real Postgres (PGlite): the GPS notice and its withdrawal, the face
-// kiosk's withdrawals as the NAS roster reads them, the nightly retention sweeps, the list of former
+// The privacy tools against a real Postgres (PGlite): the GPS notice and its withdrawal, a face
+// check-in withdrawal kept as proof, the nightly retention sweeps, the list of former
 // employees due for anonymisation and what anonymising one removes — and keeps — and "export my
 // data" holding the person's own records and nobody else's.
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -35,7 +35,7 @@ import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { storedObjects } from "../../../tests/helpers/storage";
 import { anonymiseFormerEmployee, listAnonymisationDue } from "./anonymise";
-import { faceWithdrawnAmong, gpsConsentOf, gpsNoticeText, mayRecordPosition, recordConsentEvent, recordGpsAnswer } from "./consents";
+import { consentHistoryOf, gpsConsentOf, gpsNoticeText, mayRecordPosition, recordConsentEvent, recordGpsAnswer } from "./consents";
 import { GPS_NOTICE_VERSION } from "./engine/retention";
 import { buildMyDataExport } from "./export";
 import { clearPunchPositions, purgeAiConversations } from "./retention";
@@ -115,8 +115,8 @@ describe("the GPS notice", () => {
   });
 });
 
-describe("face withdrawals, as the NAS roster reads them", () => {
-  it("names who withdrew and was not enrolled again since", async () => {
+describe("face check-in withdrawals", () => {
+  it("are kept as the proof of the withdrawal, each in its own person's history", async () => {
     await db()
       .insert(schema.privacyConsentEvent)
       .values({ personId: ids.huy, purpose: "face_check_in", decision: "withdrawn", at: new Date("2026-09-01T00:00:00Z") });
@@ -127,8 +127,8 @@ describe("face withdrawals, as the NAS roster reads them", () => {
     await db()
       .insert(schema.faceEnrolment)
       .values({ personId: ids.nhu, entityId: ids.media, consentAt: new Date("2026-09-15T00:00:00Z"), consentRecordedByPersonId: ids.hr });
-    expect([...(await faceWithdrawnAmong([ids.huy, ids.nhu, ids.hr]))]).toEqual([ids.huy]);
-    expect(await faceWithdrawnAmong([])).toEqual(new Set());
+    expect((await consentHistoryOf(ids.huy)).filter((row) => row.purpose === "face_check_in").map((row) => row.decision)).toEqual(["withdrawn"]);
+    expect((await consentHistoryOf(ids.hr)).filter((row) => row.purpose === "face_check_in")).toEqual([]);
   });
 });
 

@@ -7,11 +7,7 @@
 //
 // A clock belongs to one entity, whose HR administers it, and may serve others too: an office shared
 // by several entities has one kiosk at its door. Its IDs may then be any served entity's people.
-//
-// A clock may also send its punches itself (the face kiosk, tools/face-kiosk): it signs in with a
-// device token and its posts go through the same commit as an uploaded file.
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
 import { and, asc, count, desc, eq, inArray, max, min, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -24,9 +20,7 @@ import { type Column, oneOf, type ParsedRow, type Problem, text } from "@/module
 import { defineImport, readSpreadsheet } from "@/modules/platform/import/service";
 import { listEntities } from "@/modules/platform/org/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
-import { faceWithdrawnAmong } from "@/modules/privacy/service";
 import { CANONICAL_HEADERS, type DeviceMapping, inferredDirection, mappingProblems, parseDat, parseTimestamp, toCanonicalTable } from "./engine/device-log";
-import type { PushedRow } from "./engine/device-push";
 import { vietnamDateAndMinute } from "./engine/merge";
 import { recomputeDays } from "./timesheets";
 
@@ -514,67 +508,6 @@ export async function listUnmappedLines(deviceId: string, limit = 5000) {
     .where(eq(schema.deviceUnmappedLog.deviceId, deviceId))
     .orderBy(asc(schema.deviceUnmappedLog.deviceUserId), asc(schema.deviceUnmappedLog.at))
     .limit(limit);
-}
-
-// ── Clocks that push their punches ──────────────────────────────────────────────────────────
-
-// 32 random bytes: a token this long is looked up by its hash, with no need for a slow one.
-const hashPushToken = (token: string) => createHash("sha256").update(token).digest("hex");
-
-/** A new token for the clock, replacing any earlier one. The plain token is returned once and never stored. */
-export async function issuePushToken(deviceId: string): Promise<{ token: string; device: DeviceRow }> {
-  const token = `szd_${randomBytes(32).toString("base64url")}`;
-  const [device] = await db()
-    .update(schema.attendanceDevice)
-    .set({ pushTokenHash: hashPushToken(token), pushTokenIssuedAt: new Date(), updatedAt: new Date() })
-    .where(eq(schema.attendanceDevice.id, deviceId))
-    .returning();
-  if (!device) throw new ActionError("not_found");
-  return { token, device };
-}
-
-export async function revokePushToken(deviceId: string): Promise<DeviceRow> {
-  const [device] = await db().update(schema.attendanceDevice).set({ pushTokenHash: null, pushTokenIssuedAt: null, updatedAt: new Date() }).where(eq(schema.attendanceDevice.id, deviceId)).returning();
-  if (!device) throw new ActionError("not_found");
-  return device;
-}
-
-/** The active clock a token belongs to, or null. Calling in counts as being seen. */
-export async function devicePresentingToken(token: string): Promise<DeviceRow | null> {
-  if (!/^szd_[A-Za-z0-9_-]{43}$/.test(token)) return null;
-  const [device] = await db()
-    .update(schema.attendanceDevice)
-    .set({ lastSeenAt: new Date() })
-    .where(and(eq(schema.attendanceDevice.pushTokenHash, hashPushToken(token)), eq(schema.attendanceDevice.isActive, true)))
-    .returning();
-  return device ?? null;
-}
-
-/** Punches a clock sent: the same commit as an uploaded log, so a resend adds nothing twice. */
-export async function commitPushedRows(deviceId: string, rows: PushedRow[]): Promise<CommitCounts> {
-  if (rows.length === 0) return { punches: 0, skipped: 0, unmapped: 0, people: 0 };
-  const { counts, personIds } = await db().transaction((tx) => commitRows(rows, tx as Tx, deviceId, null));
-  // The people who just walked in see it on their Today page at once, not after the live TTL.
-  await invalidateLive(...personIds);
-  return counts;
-}
-
-/** Who the clock should know: its mapped IDs with names, for the kiosk's enrolment list. */
-export async function deviceRoster(deviceId: string): Promise<{ userId: string; fullName: string; employeeCode: string | null }[]> {
-  // A clock that keeps its own faces (the NAS kiosk) learns who to forget from this list: somebody
-  // who has left, or who withdrew their consent to face check-in, is no longer on it — the NAS stops
-  // recognising them at its next sync and deletes their faces by its own purge (docs/privacy).
-  const [rows, gone] = await Promise.all([
-    listUserMap(deviceId),
-    db()
-      .select({ id: schema.person.id })
-      .from(schema.person)
-      .innerJoin(schema.deviceUserMap, eq(schema.deviceUserMap.personId, schema.person.id))
-      .where(and(eq(schema.deviceUserMap.deviceId, deviceId), eq(schema.person.status, "offboarded"))),
-  ]);
-  const withdrawn = await faceWithdrawnAmong([...new Set(rows.map((row) => row.personId))]);
-  const left = new Set(gone.map((row) => row.id));
-  return rows.filter((row) => !left.has(row.personId) && !withdrawn.has(row.personId)).map((row) => ({ userId: row.deviceUserId, fullName: row.fullName, employeeCode: row.employeeCode }));
 }
 
 // ── The in-app kiosk ────────────────────────────────────────────────────────────────────────

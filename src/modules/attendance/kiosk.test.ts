@@ -338,8 +338,8 @@ describe("the limiter of the kiosk's and the clocks' endpoints", () => {
     ).toMatchObject({ hits: max + 1 });
   });
 
-  it("keys a kiosk and a clock apart, and names neither", () => {
-    expect(endpointKey("kiosk", "x")).not.toBe(endpointKey("device", "x"));
+  it("keys two kiosk sessions apart, and names neither", () => {
+    expect(endpointKey("kiosk", "session-1")).not.toBe(endpointKey("kiosk", "session-2"));
     expect(endpointKey("kiosk", "session-1")).toMatch(/^[0-9a-f]{32}$/);
   });
 
@@ -347,7 +347,7 @@ describe("the limiter of the kiosk's and the clocks' endpoints", () => {
     expect(await purgeEndpointHits(new Date("2026-01-05T03:01:00Z"))).toBe(3);
     expect(await db().select().from(schema.attendanceEndpointHit)).toHaveLength(1);
     // The job: leavers' faces, lapsed kiosks and old windows, each counted.
-    await countEndpointHit("device_roster", endpointKey("device", ids.device), new Date(Date.now() - 3 * DAY));
+    await countEndpointHit("kiosk_qr", endpointKey("kiosk", "lapsed-session"), new Date(Date.now() - 3 * DAY));
     const result = await faceLeaversJob.run({ today: "2026-10-05" });
     expect(result).toMatchObject({ people: 0, kiosksLapsed: 0, endpointHits: 2 });
   });

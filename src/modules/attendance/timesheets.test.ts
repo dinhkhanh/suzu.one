@@ -23,26 +23,9 @@ import { parseTable } from "@/modules/platform/import/engine/table";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { getAttendancePolicy, savePolicy } from "./attendance-policies";
-import {
-  bulkMapByEmployeeCode,
-  checkLogRows,
-  commitLogRows,
-  commitPushedRows,
-  deviceLogColumns,
-  devicePresentingToken,
-  deviceRoster,
-  getDevice,
-  issuePushToken,
-  listUnmapped,
-  mapDeviceUser,
-  revokePushToken,
-  saveDevice,
-  saveProfile,
-  servedEntityIds,
-} from "./devices";
+import { bulkMapByEmployeeCode, checkLogRows, commitLogRows, deviceLogColumns, getDevice, listUnmapped, listUserMap, mapDeviceUser, saveDevice, saveProfile, servedEntityIds } from "./devices";
 import type { SchedulePattern } from "./engine/calendar";
 import { parseDat, PROFILE_SEED, toCanonicalTable } from "./engine/device-log";
-import { pushBodySchema, pushedRows } from "./engine/device-push";
 import { requestTimesheetRecompute } from "./recompute";
 import { saveSchedule } from "./schedules";
 import { getTeamMonth, getTimesheetDays, recomputeDays, summariseMonth, timesheetTargetFor } from "./timesheets";
@@ -290,51 +273,6 @@ describe("who reads whose month", () => {
   });
 });
 
-describe("a clock that sends its own punches", () => {
-  it("signs in with its token, adds each punch once, and is shut out when the token is revoked", async () => {
-    const { profileId } = (await getDevice(ids.device))!;
-    const { after: kiosk } = await saveDevice({ id: null, entityId: ids.creative, name: "Face kiosk", model: null, serialNumber: null, locationId: null, profileId, isActive: true });
-    await bulkMapByEmployeeCode(kiosk.id, "SZC-0001, SZC-0001", ids.hr);
-    expect(await deviceRoster(kiosk.id)).toEqual([{ userId: "SZC-0001", fullName: "Lan", employeeCode: "SZC-0001" }]);
-
-    const { token } = await issuePushToken(kiosk.id);
-    expect(token).toMatch(/^szd_[A-Za-z0-9_-]{43}$/);
-    // Only the hash is kept.
-    expect((await getDevice(kiosk.id))!.pushTokenHash).toMatch(/^[0-9a-f]{64}$/);
-    expect(await devicePresentingToken(`szd_${"x".repeat(43)}`)).toBeNull();
-    expect(await devicePresentingToken("not a token")).toBeNull();
-    const seen = await devicePresentingToken(token);
-    expect(seen?.id).toBe(kiosk.id);
-    expect(seen?.lastSeenAt).toBeInstanceOf(Date);
-
-    const body = pushBodySchema.parse({
-      punches: [
-        { userId: "SZC-0001", at: "2026-09-01T08:25:00+07:00" },
-        { userId: "SZC-0001", at: "2026-09-01T10:31:00Z" },
-        { userId: "SZC-9999", at: "2026-09-01T08:40:00+07:00" },
-      ],
-    });
-    expect(await commitPushedRows(kiosk.id, pushedRows(body))).toEqual({ punches: 2, skipped: 0, unmapped: 1, people: 1 });
-    // The kiosk resends after a timeout: nothing is added twice.
-    expect(await commitPushedRows(kiosk.id, pushedRows(body))).toEqual({ punches: 0, skipped: 3, unmapped: 0, people: 0 });
-    const punches = await db().select().from(schema.punch).where(eq(schema.punch.deviceId, kiosk.id));
-    expect(punches.map((punch) => [punch.at.toISOString(), punch.direction, punch.source])).toEqual([
-      ["2026-09-01T01:25:00.000Z", "in", "device"],
-      ["2026-09-01T10:31:00.000Z", "out", "device"],
-    ]);
-    expect((await dayOf(ids.lan, "2026-09-01"))?.status).toBeDefined();
-    expect(await listUnmapped(kiosk.id)).toMatchObject([{ deviceUserId: "SZC-9999", lines: 1 }]);
-
-    await revokePushToken(kiosk.id);
-    expect(await devicePresentingToken(token)).toBeNull();
-    const { token: second } = await issuePushToken(kiosk.id);
-    expect(await devicePresentingToken(token)).toBeNull();
-    await saveDevice({ id: kiosk.id, entityId: ids.creative, name: "Face kiosk", model: null, serialNumber: null, locationId: null, profileId, isActive: false });
-    // An inactive clock is shut out too, whatever token it holds.
-    expect(await devicePresentingToken(second)).toBeNull();
-  });
-});
-
 describe("one clock for an office several entities share", () => {
   it("maps the people of every entity it serves, and each punch keeps its person's entity", async () => {
     const { profileId } = (await getDevice(ids.device))!;
@@ -344,14 +282,12 @@ describe("one clock for an office several entities share", () => {
     expect(await servedEntityIds(kiosk)).toEqual([ids.media, ids.creative]);
 
     await bulkMapByEmployeeCode(kiosk.id, "SZM-0002, SZM-0002\nSZC-0001, SZC-0001", ids.hr);
-    expect((await deviceRoster(kiosk.id)).map((row) => row.fullName)).toEqual(["Lan", "Huy"]);
-    const body = pushBodySchema.parse({
-      punches: [
-        { userId: "SZM-0002", at: "2026-09-02T08:20:00+07:00" },
-        { userId: "SZC-0001", at: "2026-09-02T08:21:00+07:00" },
-      ],
-    });
-    expect(await commitPushedRows(kiosk.id, pushedRows(body))).toMatchObject({ punches: 2, unmapped: 0, people: 2 });
+    expect((await listUserMap(kiosk.id)).map((row) => row.fullName).sort()).toEqual(["Huy", "Lan"]);
+    const log = [
+      { row: 1, values: { deviceUserId: "SZM-0002", at: "2026-09-02 08:20:00", direction: null } },
+      { row: 2, values: { deviceUserId: "SZC-0001", at: "2026-09-02 08:21:00", direction: null } },
+    ];
+    expect(await inTx((tx) => commitLogRows(log, tx, kiosk.id, null))).toMatchObject({ punches: 2, unmapped: 0, people: 2 });
     const punches = await db().select({ personId: schema.punch.personId, entityId: schema.punch.entityId }).from(schema.punch).where(eq(schema.punch.deviceId, kiosk.id));
     expect(new Map(punches.map((punch) => [punch.personId, punch.entityId]))).toEqual(
       new Map([
@@ -374,17 +310,5 @@ describe("one clock for an office several entities share", () => {
     expect(await servedEntityIds(kiosk)).toEqual([ids.media, ids.creative]);
     await saveDevice({ id: kiosk.id, entityId: ids.media, name: "Sảnh chung", model: null, serialNumber: null, locationId: null, profileId, isActive: true, alsoServes: [] });
     expect(await servedEntityIds(kiosk)).toEqual([ids.media]);
-
-    // The NAS kiosk forgets whom the roster leaves out: a face consent withdrawn (and not given
-    // again by a new enrolment) takes the person off it, and so does leaving.
-    await db().insert(schema.privacyConsentEvent).values({ personId: ids.huy, purpose: "face_check_in", decision: "withdrawn" });
-    expect((await deviceRoster(kiosk.id)).map((row) => row.fullName)).toEqual(["Lan"]);
-    await db().update(schema.person).set({ status: "offboarded" }).where(eq(schema.person.id, ids.lan));
-    expect(await deviceRoster(kiosk.id)).toEqual([]);
-    await db().update(schema.person).set({ status: "active" }).where(eq(schema.person.id, ids.lan));
-    await db()
-      .insert(schema.faceEnrolment)
-      .values({ personId: ids.huy, entityId: ids.media, consentAt: new Date(Date.now() + 1000), consentRecordedByPersonId: ids.hr });
-    expect((await deviceRoster(kiosk.id)).map((row) => row.fullName)).toEqual(["Lan", "Huy"]);
   });
 });

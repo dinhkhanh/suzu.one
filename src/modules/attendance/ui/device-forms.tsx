@@ -10,21 +10,9 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MultiSelect, Select } from "@/components/ui/select";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
-import {
-  bulkMapAction,
-  commitDeviceLogAction,
-  issuePushTokenAction,
-  mapDeviceUserAction,
-  recomputeTimesheetsAction,
-  revokePushTokenAction,
-  saveDeviceAction,
-  savePolicyAction,
-  saveProfileAction,
-  stageDeviceLogAction,
-  unmapDeviceUserAction,
-} from "../device-actions";
+import { bulkMapAction, commitDeviceLogAction, mapDeviceUserAction, recomputeTimesheetsAction, saveDeviceAction, savePolicyAction, saveProfileAction, stageDeviceLogAction, unmapDeviceUserAction } from "../device-actions";
 import type { DeviceMapping } from "../engine/device-log";
-import { ConfirmDialog, useConfirmedSubmit } from "@/components/ui/confirm";
+import { useConfirmedSubmit } from "@/components/ui/confirm";
 
 type Option = { id: string; name: string };
 const ERRORS = "attendance.devices.errors";
@@ -281,79 +269,6 @@ export function UnmapButton({ id, label, confirm }: { id: string; label: string;
       </Button>
       {dialog}
     </form>
-  );
-}
-
-// A clock that sends its own punches (the face kiosk): the token it signs in with, shown once.
-export function PushTokenPanel({ deviceId, hasToken, appOrigin }: { deviceId: string; hasToken: boolean; appOrigin: string }) {
-  const t = useTranslations("attendance.devices.push");
-  const [pending, startTransition] = useTransition();
-  const [token, setToken] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [asking, setAsking] = useState<"replace" | "revoke" | null>(null);
-  const run = (issue: boolean) =>
-    startTransition(async () => {
-      setFailed(false);
-      const result = issue ? await issuePushTokenAction({ deviceId }) : await revokePushTokenAction({ deviceId });
-      if (!result.ok) setFailed(true);
-      else setToken(issue && "token" in result.data ? result.data.token : null);
-    });
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground">{t("hint")}</p>
-      {token ? (
-        <div className="flex flex-col gap-2 rounded-lg border p-3">
-          <p className="text-sm font-medium">{t("tokenOnce")}</p>
-          <div className="flex flex-wrap gap-2">
-            <Input readOnly value={token} className="min-w-0 flex-1 font-mono text-xs" onFocus={(event) => event.currentTarget.select()} aria-label={t("token")} />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                void navigator.clipboard?.writeText(token).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                });
-              }}
-            >
-              {copied ? t("copied") : t("copy")}
-            </Button>
-          </div>
-          <p className="font-mono text-xs text-muted-foreground">
-            SUZU_URL={appOrigin}
-            <br />
-            SUZU_DEVICE_TOKEN={token}
-          </p>
-        </div>
-      ) : null}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => (hasToken ? setAsking("replace") : run(true))}>
-          {hasToken ? t("replace") : t("issue")}
-        </Button>
-        {hasToken ? (
-          <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => setAsking("revoke")}>
-            {t("revoke")}
-          </Button>
-        ) : null}
-        <ConfirmDialog
-          open={asking !== null}
-          onOpenChange={(open) => {
-            if (!open) setAsking(null);
-          }}
-          question={asking === "revoke" ? t("revokeConfirm") : t("replaceConfirm")}
-          confirmLabel={asking === "revoke" ? t("revoke") : t("replace")}
-          destructive
-          pending={pending}
-          onConfirm={() => {
-            run(asking !== "revoke");
-            setAsking(null);
-          }}
-        />
-        {failed ? <span className="text-sm text-destructive">{t("failed")}</span> : null}
-      </div>
-    </div>
   );
 }
 

@@ -4,7 +4,7 @@
 // leaves no run behind. Who is due, and when, is `engine/checkin-reminder.ts`; each person is told
 // once per working day (`daily_reminder_sent`, through the daily service).
 import "server-only";
-import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, gte, inArray, or } from "drizzle-orm";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { getLeaveOnDays } from "@/modules/leave/service";
@@ -55,13 +55,13 @@ export async function findDueCheckIns(now: Date = new Date()): Promise<Due[]> {
       .selectDistinct({ personId: schema.punch.personId })
       .from(schema.punch)
       .where(or(...expecting.map((item) => and(eq(schema.punch.personId, item.personId), gte(schema.punch.at, new Date(checkInCountsFrom(item.expected))))))),
-    // A clock whose log HR uploads later (no push token) has its punches arrive after the fact:
-    // its people may have punched already, and the app cannot know.
+    // A clock's log arrives when HR uploads it, after the fact: its people may have punched
+    // already, and the app cannot know.
     db()
       .selectDistinct({ personId: schema.deviceUserMap.personId })
       .from(schema.deviceUserMap)
       .innerJoin(schema.attendanceDevice, eq(schema.attendanceDevice.id, schema.deviceUserMap.deviceId))
-      .where(and(inArray(schema.deviceUserMap.personId, [...new Set(expecting.map((item) => item.personId))]), eq(schema.attendanceDevice.isActive, true), isNull(schema.attendanceDevice.pushTokenHash))),
+      .where(and(inArray(schema.deviceUserMap.personId, [...new Set(expecting.map((item) => item.personId))]), eq(schema.attendanceDevice.isActive, true))),
   ]);
   const skip = new Set([...checkedIn, ...clockedOffline].map((row) => row.personId));
   return expecting.filter((item) => !skip.has(item.personId));

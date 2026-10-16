@@ -88,7 +88,7 @@ describe("the proxy's Content-Security-Policy", () => {
   });
 
   it("leaves alone what answers no page: self-authenticating endpoints, the service worker, a redirect", () => {
-    for (const path of ["/api/kiosk/punch", "/api/attendance/device/punches", "/api/auth/session", "/sw.js", "/_vercel/insights/view"]) {
+    for (const path of ["/api/kiosk/punch", "/api/auth/session", "/sw.js", "/_vercel/insights/view"]) {
       const response = ask(`https://suzu.one${path}`);
       expect(response.headers.get(REPORT_ONLY), path).toBeNull();
       expect(response.headers.get(ENFORCED), path).toBeNull();
