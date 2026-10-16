@@ -967,6 +967,13 @@
       "when": 1791391363315,
       "tag": "0137_ai_feedback",
       "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1792137488546,
+      "tag": "0138_drop-device-push-columns",
+      "breakpoints": true
     }
   ]
 }
