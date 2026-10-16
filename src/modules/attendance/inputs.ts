@@ -3,7 +3,7 @@
 // with. Here and not in `request-actions.ts` because a `"use server"` file may export nothing but
 // async functions. (`request-inputs.ts` is something else: approved requests for the timesheet.)
 import { z } from "zod";
-import { ATTENDANCE_REQUEST_TYPES } from "./requests";
+import { ATTENDANCE_REQUEST_TYPES } from "./request-types";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));

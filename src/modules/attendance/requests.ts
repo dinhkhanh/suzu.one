@@ -23,7 +23,7 @@ import { monthEnd, monthOf, monthStart } from "./timesheets";
 type Executor = Tx | ReturnType<typeof db>;
 export type AttendanceRequestRow = typeof schema.attendanceRequest.$inferSelect;
 export type AttendanceRequestType = AttendanceRequestRow["type"];
-export const ATTENDANCE_REQUEST_TYPES = ["attendance_correction", "remote_work", "overtime", "holiday_work"] as const;
+export { ATTENDANCE_REQUEST_TYPES } from "./request-types";
 
 // Every type starts with the line manager alone. An entity that wants HR or the department head
 // on, say, holiday work adds the step on /admin/approval-flows; `minutes`, `days` and `kind` are
