@@ -4672,7 +4672,7 @@
         "change": "Đổi poster",
         "remove": "Gỡ poster",
         "saving": "Đang tải lên…",
-        "hint": "JPG, PNG hoặc WebP, tối đa 50 MB. Ảnh được cắt vuông ở chính giữa và thu nhỏ trước khi tải lên."
+        "hint": "JPG, PNG hoặc WebP, tối đa 50 MB. Ảnh được cắt vuông ở chính giữa và thu nhỏ để làm ảnh xem trước — tệp gốc hãy đính kèm vào dự án."
       },
       "teamColor": "Theo màu của nhóm",
       "openTasks": "Việc đang mở",

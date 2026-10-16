@@ -22,7 +22,7 @@ export function PosterEditor({ project }: { project: { id: string; name: string;
     startTransition(async () => {
       if (file.size > MAX_FILE_BYTES) return setErrorKey("file_too_large");
       // Square, cut from the centre: every list and header shows the poster as a square.
-      const picture = await squarePicture(file, { edge: POSTER_EDGE_PX, name: "poster.jpg" });
+      const picture = await squarePicture(file, { edge: POSTER_EDGE_PX, name: "poster" });
       if (!picture) return setErrorKey("poster_unreadable");
       const result = await uploadThroughSignedUrl(
         picture,
@@ -58,7 +58,7 @@ export function PosterEditor({ project }: { project: { id: string; name: string;
         <input
           ref={input}
           type="file"
-          // Any picture the browser can open; it is re-encoded as JPEG before upload.
+          // Any picture the browser can open; it is re-encoded (JPEG, or WebP/PNG with transparency) before upload.
           accept="image/*"
           className="sr-only"
           aria-label={t("label")}
